@@ -10,11 +10,34 @@ const COL_ACCENT   = '#e94560';
 const COL_LIGHT    = '#f0f2f5';
 const COL_GREY     = '#666666';
 
+const TYPE_KEYS   = ['walking', 'cycling', 'swimming'];
+const INTENS_KEYS = ['light', 'medium', 'high'];
+
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
   return d.toLocaleDateString('de-DE', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
+}
+
+function formatDateShort(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function getISOWeekNumber(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+function getWeekMonday(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const day = d.getDay();
+  d.setDate(d.getDate() - day + (day === 0 ? -6 : 1));
+  return d.toISOString().slice(0, 10);
 }
 
 function generatePDF(outputPath, days, startDate, endDate) {
@@ -38,9 +61,107 @@ function generatePDF(outputPath, days, startDate, endDate) {
     if (days.length === 0) {
       doc.fillColor(COL_GREY).fontSize(12).font('Helvetica')
          .text('Keine Einträge für diesen Zeitraum gefunden.', { align: 'center' });
-    }
+     }
 
-    // ── Tageseinträge ───────────────────────────────────────────────────────
+     // ── Wochen-Zusammenfassung ──────────────────────────────────────────────
+     const allWorkouts = days.flatMap(d => d.workouts.map(w => ({ ...w, date: d.date })));
+     if (allWorkouts.length > 0) {
+       const weekMap = {};
+       for (const w of allWorkouts) {
+         const monday = getWeekMonday(w.date);
+         if (!weekMap[monday]) weekMap[monday] = [];
+         weekMap[monday].push(w);
+       }
+
+       doc.fillColor('#2196f3').fontSize(12).font('Helvetica-Bold')
+          .text('Wochen-Zusammenfassung Training', 50, doc.y + 4);
+       doc.y += 10;
+
+       const sortedWeeks = Object.keys(weekMap).sort();
+       const pw = doc.page.width - 100;
+
+       for (const monday of sortedWeeks) {
+         const weekWorkouts = weekMap[monday];
+         const sunday = new Date(monday + 'T12:00:00');
+         sunday.setDate(sunday.getDate() + 6);
+         const sundayStr = sunday.toISOString().slice(0, 10);
+         const weekLabel = `KW ${getISOWeekNumber(monday)} (${formatDateShort(monday)} – ${formatDateShort(sundayStr)})`;
+
+         if (doc.y > doc.page.height - 140) doc.addPage();
+
+         doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
+            .text(weekLabel, 50, doc.y + 4);
+         doc.y += 8;
+
+         // Matrix: type × intensity → { count, duration }
+         const matrix = {};
+         for (const type of TYPE_KEYS) {
+           matrix[type] = {};
+           for (const intens of INTENS_KEYS) {
+             matrix[type][intens] = { count: 0, duration: 0 };
+           }
+         }
+         for (const w of weekWorkouts) {
+           if (matrix[w.type]?.[w.intensity]) {
+             matrix[w.type][w.intensity].count++;
+             matrix[w.type][w.intensity].duration += w.duration;
+           }
+         }
+
+         // Tabellenkopf
+         const col = { type: 50, light: 170, medium: 270, high: 370, total: 455 };
+         const thY = doc.y;
+         doc.rect(50, thY, pw, 16).fill(COL_LIGHT);
+         doc.fillColor(COL_GREY).fontSize(8).font('Helvetica-Bold')
+            .text('Art',         col.type   + 4, thY + 4, { width: 115 })
+            .text('locker',      col.light,      thY + 4, { width: 95, align: 'center' })
+            .text('mittel',      col.medium,     thY + 4, { width: 95, align: 'center' })
+            .text('hoch',        col.high,       thY + 4, { width: 80, align: 'center' })
+            .text('Gesamt',      col.total,      thY + 4, { width: 90, align: 'right' });
+         doc.y = thY + 18;
+
+         // Tabellenzeilen
+         let weekTotalCount = 0, weekTotalDur = 0;
+         for (const type of TYPE_KEYS) {
+           let totalCount = 0, totalDur = 0;
+           const rY = doc.y;
+           doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica')
+              .text(TYPE_LABELS[type], col.type + 4, rY, { width: 115 });
+
+           for (const intens of INTENS_KEYS) {
+             const cell = matrix[type][intens];
+             const cellCol = intens === 'light' ? col.light : intens === 'medium' ? col.medium : col.high;
+             const cellW   = intens === 'high' ? 80 : 95;
+             const align   = intens === 'high' ? 'right' : 'center';
+             const text    = cell.count > 0 ? `${cell.count}x ${cell.duration}min` : '-';
+             totalCount += cell.count;
+             totalDur   += cell.duration;
+             doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica')
+                .text(text, cellCol, rY, { width: cellW, align });
+           }
+
+           weekTotalCount += totalCount;
+           weekTotalDur   += totalDur;
+           doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
+              .text(`${totalCount}x ${totalDur}min`, col.total, rY, { width: 90, align: 'right' });
+
+           doc.y = rY + 13;
+           doc.moveTo(50, doc.y).lineTo(50 + pw, doc.y)
+              .strokeColor('#e0e0e0').lineWidth(0.5).stroke();
+           doc.y += 3;
+         }
+
+         // Wochen-Summenzeile
+         const wtY = doc.y;
+         doc.rect(50, wtY, pw, 16).fill('#e8e8e8');
+         doc.fillColor(COL_PRIMARY).fontSize(8).font('Helvetica-Bold')
+            .text('Gesamt', col.type + 4, wtY + 4, { width: 115 })
+            .text(`${weekTotalCount}x ${weekTotalDur}min`, col.total, wtY + 4, { width: 90, align: 'right' });
+         doc.y = wtY + 22;
+       }
+     }
+
+     // ── Tageseinträge ───────────────────────────────────────────────────────
     for (const day of days) {
       const pageWidth = doc.page.width - 100;
 
