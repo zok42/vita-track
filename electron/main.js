@@ -20,8 +20,9 @@ import {
 const require = createRequire(import.meta.url);
 const { generatePDF } = require('./pdf.cjs');
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const isDev = !app.isPackaged;
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const isDev = !app.isPackaged;
+  const iconPath = path.join(__dirname, '..', 'src', 'assets', 'logo.svg');
 
 let mainWindow;
 
@@ -36,6 +37,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+    icon: iconPath,
   });
 
   if (isDev) {

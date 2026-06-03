@@ -49,35 +49,36 @@ export default function App() {
     await loadDayData(selectedDate);
   }
 
-  return (
-    <div className="app">
-      <header className="app-header">
-        <h1>VitaTrack</h1>
-        <nav className="app-nav">
-          <button
-            className={view === 'dashboard' ? 'active' : ''}
-            onClick={() => setView('dashboard')}
-          >
-            Dashboard
-          </button>
-          <button
-            className={view === 'day' ? 'active' : ''}
-            onClick={() => setView('day')}
-          >
-            Tag erfassen
-          </button>
-        </nav>
-        <div className="header-right">
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => handleDateChange(e.target.value)}
-          />
-          <button className="btn-report" onClick={() => setShowReport(true)}>
-            PDF-Bericht
-          </button>
-        </div>
-      </header>
+   return (
+     <div className="app">
+       <header className="app-header" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+         <img src="/src/assets/logo.svg" alt="VitaTrack Logo" width="32" height="32" />
+         <h1>VitaTrack</h1>
+         <nav className="app-nav">
+           <button
+             className={view === 'dashboard' ? 'active' : ''}
+             onClick={() => setView('dashboard')}
+           >
+             Dashboard
+           </button>
+           <button
+             className={view === 'day' ? 'active' : ''}
+             onClick={() => setView('day')}
+           >
+             Tag erfassen
+           </button>
+         </nav>
+         <div className="header-right">
+           <input
+             type="date"
+             value={selectedDate}
+             onChange={(e) => handleDateChange(e.target.value)}
+           />
+           <button className="btn-report" onClick={() => setShowReport(true)}>
+             PDF-Bericht
+           </button>
+         </div>
+       </header>
 
       {showReport && <ReportModal onClose={() => setShowReport(false)} />}
 
