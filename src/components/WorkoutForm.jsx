@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 
 const workoutTypes = [
-  { value: 'walking', label: 'Spazieren' },
-  { value: 'cycling', label: 'Radfahren' },
-  { value: 'swimming', label: 'Schwimmen' },
-  { value: 'workout', label: 'Workout' },
-  { value: 'tai chi', label: 'Tai Chi' },
-  { value: 'paddling', label: 'Paddeln' },
+  { value: 'walking', label: '🚶 Spazieren' },
+  { value: 'cycling', label: '🚴 Radfahren' },
+  { value: 'swimming', label: '🏊 Schwimmen' },
+  { value: 'workout', label: '💪 Workout' },
+  { value: 'tai chi', label: '🧘 Tai Chi' },
+  { value: 'paddling', label: '🛶 Paddeln' },
 ];
 
 const intensities = [
-  { value: 'light', label: 'locker' },
-  { value: 'medium', label: 'mittel' },
-  { value: 'high', label: 'hoch' },
+  { value: 'light', label: '🟢 Locker' },
+  { value: 'medium', label: '🟡 Mittel' },
+  { value: 'high', label: '🔴 Hoch' },
 ];
 
 export default function WorkoutForm({ date, onSaved, workoutToEdit = null, onCancel }) {

@@ -1,12 +1,12 @@
 const typeLabels = { 
-  walking: 'Spazieren', 
-  cycling: 'Radfahren', 
-  swimming: 'Schwimmen',
-  workout: 'Workout',
-  'tai chi': 'Tai Chi',
-  paddling: 'Paddeln'
+  walking: '🚶 Spazieren', 
+  cycling: '🚴 Radfahren', 
+  swimming: '🏊 Schwimmen',
+  workout: '💪 Workout',
+  'tai chi': '🧘 Tai Chi',
+  paddling: '🛶 Paddeln'
 };
-const intensityLabels = { light: 'locker', medium: 'mittel', high: 'hoch' };
+const intensityLabels = { light: '🟢 Locker', medium: '🟡 Mittel', high: '🔴 Hoch' };
 
 export default function WorkoutList({ workouts, onDelete, onEdit }) {
   if (workouts.length === 0) return <p className="empty">Keine Trainings erfasst</p>;
@@ -20,7 +20,7 @@ export default function WorkoutList({ workouts, onDelete, onEdit }) {
           <th>Kalorien (kcal)</th>
           <th>Puls (bpm)</th>
           <th>Intensität</th>
-          <th className="actions">Aktionen</th>
+          <th className="actions">⚙️</th>
         </tr>
       </thead>
       <tbody>

@@ -1,9 +1,9 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 
-const MEAL_NAMES   = { breakfast: 'Frühstück', lunch: 'Mittagessen', dinner: 'Abendessen', snack: 'Zwischenmahlzeit' };
-const TYPE_LABELS  = { walking: 'Spazieren', cycling: 'Radfahren', swimming: 'Schwimmen' };
-const INTENS_LABELS = { light: 'locker', medium: 'mittel', high: 'hoch' };
+const MEAL_NAMES   = { breakfast: '🌅 Frühstück', lunch: '☀️ Mittagessen', dinner: '🌙 Abendessen', snack: '🍎 Zwischenmahlzeit' };
+const TYPE_LABELS  = { walking: '🚶 Spazieren', cycling: '🚴 Radfahren', swimming: '🏊 Schwimmen', workout: '💪 Workout', 'tai chi': '🧘 Tai Chi', paddling: '🛶 Paddeln' };
+const INTENS_LABELS = { light: '🟢 Locker', medium: '🟡 Mittel', high: '🔴 Hoch' };
 
 const COL_PRIMARY  = '#1a1a2e';
 const COL_ACCENT   = '#e94560';
@@ -170,7 +170,7 @@ function generatePDF(outputPath, days, startDate, endDate) {
        doc.y += 10;
 
        // Prepare data for macros chart (average per day)
-       const macroSums = { carbs: 0, protein: 0, fruit_veggies: 0 };
+       const macroSums = { carbs: 0, protein: 0, fruit_veggies: 0, calories: 0 };
        let daysWithMeals = 0;
        for (const day of days) {
          if (day.meals.length > 0) {
@@ -179,14 +179,16 @@ function generatePDF(outputPath, days, startDate, endDate) {
              macroSums.carbs   += meal.carbs;
              macroSums.protein += meal.protein;
              macroSums.fruit_veggies += meal.fruit_veggies;
+             macroSums.calories  += meal.calories || 0;
            }
          }
        }
        const macroAvg = daysWithMeals > 0 ? {
          carbs:   macroSums.carbs   / daysWithMeals,
          protein: macroSums.protein / daysWithMeals,
-         fruit_veggies: macroSums.fruit_veggies / daysWithMeals
-       } : { carbs: 0, protein: 0, fruit_veggies: 0 };
+         fruit_veggies: macroSums.fruit_veggies / daysWithMeals,
+         calories: macroSums.calories / daysWithMeals
+       } : { carbs: 0, protein: 0, fruit_veggies: 0, calories: 0 };
 
        // Prepare data for workout duration per type
        const workoutTotals = { walking: 0, cycling: 0, swimming: 0 };
@@ -200,7 +202,7 @@ function generatePDF(outputPath, days, startDate, endDate) {
 
        // Draw two bar charts side by side
        const chartWidth = (doc.page.width - 100) / 2 - 20; // each chart width with gap
-       const chartHeight = 100;
+       const chartHeight = 120;
        const leftX = 50;
        const rightX = 50 + chartWidth + 20;
        const chartY = doc.y;
@@ -213,7 +215,8 @@ function generatePDF(outputPath, days, startDate, endDate) {
        const macroData = [
          { label: 'KH', value: Math.round(macroAvg.carbs),   color: '#4caf50' },
          { label: 'Prot', value: Math.round(macroAvg.protein), color: '#2196f3' },
-         { label: 'Gemüse/Obst', value: Math.round(macroAvg.fruit_veggies), color: '#ff9800' }
+         { label: 'Obst/Gem', value: Math.round(macroAvg.fruit_veggies), color: '#ff9800' },
+         { label: 'kcal', value: Math.round(macroAvg.calories), color: '#9c27b0' }
        ];
        const macroMax = Math.max(...macroData.map(d => d.value)) || 1;
        macroData.forEach((item, index) => {
@@ -271,30 +274,33 @@ function generatePDF(outputPath, days, startDate, endDate) {
         doc.y += 6;
 
         // Tabellenkopf
-        const col = { name: 50, kh: 240, p: 340, og: 430 };
+        const col = { name: 50, kh: 200, p: 290, og: 370, cal: 440 };
         const rowY = doc.y;
         doc.rect(50, rowY, pageWidth, 16).fill(COL_LIGHT);
         doc.fillColor(COL_GREY).fontSize(8).font('Helvetica-Bold');
-        doc.text('Mahlzeit / Gericht',    col.name + 4, rowY + 4, { width: 185 });
-        doc.text('Kohlenhydrate (g)', col.kh,  rowY + 4, { width: 95, align: 'right' });
-        doc.text('Protein (g)',        col.p,   rowY + 4, { width: 85, align: 'right' });
-        doc.text('Gemüse/Obst (g)',   col.og,  rowY + 4, { width: 115, align: 'right' });
+        doc.text('Mahlzeit / Gericht',    col.name + 4, rowY + 4, { width: 145 });
+        doc.text('KH (g)', col.kh,  rowY + 4, { width: 85, align: 'right' });
+        doc.text('Prot (g)',        col.p,   rowY + 4, { width: 75, align: 'right' });
+        doc.text('Obst/Gem (g)',   col.og,  rowY + 4, { width: 65, align: 'right' });
+        doc.text('kcal',   col.cal,  rowY + 4, { width: 70, align: 'right' });
         doc.y = rowY + 18;
 
-        let totalCarbs = 0, totalProtein = 0, totalFv = 0;
+        let totalCarbs = 0, totalProtein = 0, totalFv = 0, totalCal = 0;
 
         for (const meal of day.meals) {
           totalCarbs   += meal.carbs;
           totalProtein += meal.protein;
           totalFv      += meal.fruit_veggies;
+          totalCal     += meal.calories || 0;
 
           const mY = doc.y;
           doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
-             .text(MEAL_NAMES[meal.meal_type] || '', col.name + 4, mY, { width: 220 });
+             .text(MEAL_NAMES[meal.meal_type] || '', col.name + 4, mY, { width: 180 });
           doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica')
-             .text(String(meal.carbs),         col.kh, mY, { width: 95,  align: 'right' })
-             .text(String(meal.protein),        col.p,  mY, { width: 85,  align: 'right' })
-             .text(String(meal.fruit_veggies),  col.og, mY, { width: 115, align: 'right' });
+             .text(String(meal.carbs),         col.kh, mY, { width: 85,  align: 'right' })
+             .text(String(meal.protein),        col.p,  mY, { width: 75,  align: 'right' })
+             .text(String(meal.fruit_veggies),  col.og, mY, { width: 65, align: 'right' })
+             .text(String(meal.calories || 0),  col.cal, mY, { width: 70, align: 'right' });
           doc.y = mY + 13;
 
           if (meal.name && meal.name.trim()) {
@@ -313,10 +319,11 @@ function generatePDF(outputPath, days, startDate, endDate) {
         const sumY = doc.y;
         doc.rect(50, sumY, pageWidth, 16).fill('#e8e8e8');
         doc.fillColor(COL_PRIMARY).fontSize(8).font('Helvetica-Bold')
-           .text('Gesamt', col.name + 4, sumY + 4, { width: 220 })
-           .text(totalCarbs.toFixed(0),   col.kh, sumY + 4, { width: 95,  align: 'right' })
-           .text(totalProtein.toFixed(0), col.p,  sumY + 4, { width: 85,  align: 'right' })
-           .text(totalFv.toFixed(0),      col.og, sumY + 4, { width: 115, align: 'right' });
+           .text('Gesamt', col.name + 4, sumY + 4, { width: 180 })
+           .text(totalCarbs.toFixed(0),   col.kh, sumY + 4, { width: 85,  align: 'right' })
+           .text(totalProtein.toFixed(0), col.p,  sumY + 4, { width: 75,  align: 'right' })
+           .text(totalFv.toFixed(0),      col.og, sumY + 4, { width: 65, align: 'right' })
+           .text(totalCal.toFixed(0),     col.cal, sumY + 4, { width: 70, align: 'right' });
         doc.y = sumY + 22;
       }
 

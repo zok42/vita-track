@@ -1,8 +1,8 @@
 const typeLabels = {
-  breakfast: 'Frühstück',
-  lunch: 'Mittagessen',
-  dinner: 'Abendessen',
-  snack: 'Zwischenmahlzeit',
+  breakfast: '🌅 Frühstück',
+  lunch: '☀️ Mittagessen',
+  dinner: '🌙 Abendessen',
+  snack: '🍎 Zwischenmahlzeit',
 };
 
 export default function MealList({ meals, onDelete, onEdit }) {
@@ -17,7 +17,8 @@ export default function MealList({ meals, onDelete, onEdit }) {
           <th>KH (g)</th>
           <th>Protein (g)</th>
           <th>Obst/Gemüse (g)</th>
-          <th className="actions">Aktionen</th>
+          <th>Kalorien (kcal)</th>
+          <th className="actions">⚙️</th>
         </tr>
       </thead>
       <tbody>
@@ -28,6 +29,7 @@ export default function MealList({ meals, onDelete, onEdit }) {
             <td>{m.carbs}</td>
             <td>{m.protein}</td>
             <td>{m.fruit_veggies}</td>
+            <td>{m.calories || '—'}</td>
             <td className="actions">
               <button className="btn-edit" onClick={() => onEdit(m)} title="Bearbeiten">✏️</button>
               <button className="btn-delete" onClick={() => onDelete(m.id)} title="Löschen">🗑️</button>

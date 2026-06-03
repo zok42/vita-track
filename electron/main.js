@@ -53,10 +53,10 @@ function createWindow() {
 function registerIpcHandlers() {
   ipcMain.handle('get-meals', (_e, date) => getMeals(date));
   ipcMain.handle('get-meals-range', (_e, start, end) => getMealsRange(start, end));
-  ipcMain.handle('upsert-meal', (_e, date, mealType, name, carbs, protein, fruitVeggies) =>
-    upsertMeal(date, mealType, name, carbs, protein, fruitVeggies));
-  ipcMain.handle('update-meal', (_e, id, mealType, name, carbs, protein, fruitVeggies) =>
-    updateMeal(id, mealType, name, carbs, protein, fruitVeggies));
+  ipcMain.handle('upsert-meal', (_e, date, mealType, name, carbs, protein, fruitVeggies, calories) =>
+    upsertMeal(date, mealType, name, carbs, protein, fruitVeggies, calories));
+  ipcMain.handle('update-meal', (_e, id, mealType, name, carbs, protein, fruitVeggies, calories) =>
+    updateMeal(id, mealType, name, carbs, protein, fruitVeggies, calories));
   ipcMain.handle('delete-meal', (_e, id) => deleteMeal(id));
   ipcMain.handle('get-workouts', (_e, date) => getWorkouts(date));
   ipcMain.handle('get-workouts-range', (_e, start, end) => getWorkoutsRange(start, end));

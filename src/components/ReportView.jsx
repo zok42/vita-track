@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 
 const MEAL_LABELS = {
-  breakfast: 'Frühstück',
-  lunch: 'Mittagessen',
-  dinner: 'Abendessen',
-  snack: 'Zwischenmahlzeit',
+  breakfast: '🌅 Frühstück',
+  lunch: '☀️ Mittagessen',
+  dinner: '🌙 Abendessen',
+  snack: '🍎 Zwischenmahlzeit',
 };
 
 const TYPE_LABELS = {
@@ -36,10 +36,11 @@ export default function ReportView() {
     // Daily totals
     const dailyMeals = {};
     for (const m of meals) {
-      if (!dailyMeals[m.date]) dailyMeals[m.date] = { carbs: 0, protein: 0, fruitVeggies: 0 };
+      if (!dailyMeals[m.date]) dailyMeals[m.date] = { carbs: 0, protein: 0, fruitVeggies: 0, calories: 0 };
       dailyMeals[m.date].carbs += m.carbs;
       dailyMeals[m.date].protein += m.protein;
       dailyMeals[m.date].fruitVeggies += m.fruit_veggies;
+      dailyMeals[m.date].calories += m.calories || 0;
     }
 
     const dailyWorkouts = {};
@@ -51,10 +52,11 @@ export default function ReportView() {
     // Macros by meal type
     const macrosByType = {};
     for (const m of meals) {
-      if (!macrosByType[m.meal_type]) macrosByType[m.meal_type] = { carbs: 0, protein: 0, fruitVeggies: 0 };
+      if (!macrosByType[m.meal_type]) macrosByType[m.meal_type] = { carbs: 0, protein: 0, fruitVeggies: 0, calories: 0 };
       macrosByType[m.meal_type].carbs += m.carbs;
       macrosByType[m.meal_type].protein += m.protein;
       macrosByType[m.meal_type].fruitVeggies += m.fruit_veggies;
+      macrosByType[m.meal_type].calories += m.calories || 0;
     }
 
     // Workout totals by type
@@ -85,6 +87,7 @@ export default function ReportView() {
     const totalCarbs = meals.reduce((s, m) => s + m.carbs, 0);
     const totalProtein = meals.reduce((s, m) => s + m.protein, 0);
     const totalFruitVeggies = meals.reduce((s, m) => s + m.fruit_veggies, 0);
+    const totalMealCalories = meals.reduce((s, m) => s + (m.calories || 0), 0);
     const totalDuration = workouts.reduce((s, w) => s + w.duration, 0);
     const totalCalories = workouts.reduce((s, w) => s + (w.calories || 0), 0);
 
@@ -97,7 +100,7 @@ export default function ReportView() {
       macrosByType,
       workoutByType,
       workoutByIntensity,
-      totals: { totalCarbs, totalProtein, totalFruitVeggies, totalDuration, totalCalories },
+      totals: { totalCarbs, totalProtein, totalFruitVeggies, totalMealCalories, totalDuration, totalCalories },
       daysCount: new Set([...Object.keys(dailyMeals), ...Object.keys(dailyWorkouts)]).size,
     });
   }
@@ -113,10 +116,12 @@ export default function ReportView() {
 
   // Chart max values
   const macroMax = Math.max(totals.totalCarbs, totals.totalProtein, totals.totalFruitVeggies) || 1;
+  const calorieMax = Math.max(totals.totalMealCalories, totals.totalCalories) || 1;
   const workoutTypeMax = Math.max(...Object.values(workoutByType).map(v => v.duration)) || 1;
   const dailyDurationMax = Math.max(...Object.values(dailyWorkouts)) || 1;
   const dailyCarbsMax = Math.max(...Object.values(dailyMeals).map(d => d.carbs)) || 1;
   const dailyProteinMax = Math.max(...Object.values(dailyMeals).map(d => d.protein)) || 1;
+  const dailyCaloriesMax = Math.max(...Object.values(dailyMeals).map(d => d.calories)) || 1;
 
   const sortedDates = [...new Set([
     ...Object.keys(dailyMeals),
@@ -144,6 +149,7 @@ export default function ReportView() {
           <div className="nutrient-row"><span>Kohlenhydrate</span><span className="value">{totals.totalCarbs.toFixed(0)}g</span></div>
           <div className="nutrient-row"><span>Protein</span><span className="value">{totals.totalProtein.toFixed(0)}g</span></div>
           <div className="nutrient-row"><span>Obst/Gemüse</span><span className="value">{totals.totalFruitVeggies.toFixed(0)}g</span></div>
+          <div className="nutrient-row"><span>Kalorien</span><span className="value">{totals.totalMealCalories.toFixed(0)} kcal</span></div>
         </div>
         <div className="summary-card">
           <h4>Training Gesamt</h4>
@@ -207,7 +213,7 @@ export default function ReportView() {
           <div className="bar-chart">
             {['light', 'medium', 'high'].map((intens) => {
               const data = workoutByIntensity[intens] || { count: 0, duration: 0 };
-              const label = { light: 'Locker', medium: 'Mittel', high: 'Hoch' }[intens];
+              const label = { light: '🟢 Locker', medium: '🟡 Mittel', high: '🔴 Hoch' }[intens];
               const color = { light: '#8bc34a', medium: '#ff9800', high: '#e94560' }[intens];
               const maxDur = Math.max(...Object.values(workoutByIntensity).map(v => v.duration)) || 1;
               return (
@@ -285,10 +291,11 @@ export default function ReportView() {
             <div className="timeline-header">
               <span className="tl-label">KH (g)</span>
               <span className="tl-label">Prot (g)</span>
+              <span className="tl-label">Kalorien (kcal)</span>
               <span className="tl-label">Training (min)</span>
             </div>
             {sortedDates.map((date) => {
-              const m = dailyMeals[date] || { carbs: 0, protein: 0 };
+              const m = dailyMeals[date] || { carbs: 0, protein: 0, calories: 0 };
               const w = dailyWorkouts[date] || 0;
               return (
                 <div className="timeline-row" key={date}>
@@ -301,10 +308,13 @@ export default function ReportView() {
                       <div className="tl-bar-fill" style={{ width: `${(m.protein / dailyProteinMax) * 100}%`, background: '#2196f3' }} />
                     </div>
                     <div className="tl-bar-track">
+                      <div className="tl-bar-fill" style={{ width: `${(m.calories / dailyCaloriesMax) * 100}%`, background: '#ff9800' }} />
+                    </div>
+                    <div className="tl-bar-track">
                       <div className="tl-bar-fill" style={{ width: `${(w / dailyDurationMax) * 100}%`, background: '#9c27b0' }} />
                     </div>
                   </div>
-                  <span className="tl-values">{m.carbs.toFixed(0)} / {m.protein.toFixed(0)} / {w}</span>
+                  <span className="tl-values">{m.carbs.toFixed(0)} / {m.protein.toFixed(0)} / {m.calories.toFixed(0)} / {w}</span>
                 </div>
               );
             })}

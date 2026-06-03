@@ -116,9 +116,9 @@ sequenceDiagram
 - **Bericht**: Diagramme und Statistiken für einen frei wählbaren Zeitraum
 
 ### Mahlzeiten
-- 4 Mahlzeitentypen: Frühstück, Mittagessen, Abendessen, Zwischenmahlzeit
+- 4 Mahlzeitentypen: 🌅 Frühstück, ☀️ Mittagessen, 🌙 Abendessen, 🍎 Zwischenmahlzeit
 - Erfassung des Gerichtsnamens (bis 256 Zeichen)
-- Erfassung von Kohlenhydraten, Protein und Obst/Gemüse in Gramm
+- Erfassung von Kohlenhydraten, Protein, Obst/Gemüse und Kalorien
 - Tabelle mit Bearbeiten (✏️) und Löschen (🗑️) Funktionen
 - Alternierende Zeilenfarben für bessere Lesbarkeit
 
@@ -228,6 +228,7 @@ erDiagram
         float carbs
         float protein
         float fruit_veggies
+        float calories
         string created_at
     }
     workouts {
@@ -252,6 +253,7 @@ CREATE TABLE meals (
   carbs         REAL NOT NULL DEFAULT 0,
   protein       REAL NOT NULL DEFAULT 0,
   fruit_veggies REAL NOT NULL DEFAULT 0,
+  calories      REAL NOT NULL DEFAULT 0,
   created_at    TEXT DEFAULT (datetime('now'))
 );
 
@@ -274,8 +276,8 @@ CREATE TABLE workouts (
 | ------- | --------- | ------------ |
 | `getMeals(date)` | `date: string` | Mahlzeiten eines Tages laden |
 | `getMealsRange(start, end)` | `start, end: string` | Mahlzeiten im Zeitraum laden |
-| `upsertMeal(date, mealType, name, carbs, protein, fruitVeggies)` | – | Mahlzeit erstellen/aktualisieren |
-| `updateMeal(id, mealType, name, carbs, protein, fruitVeggies)` | – | Mahlzeit aktualisieren |
+| `upsertMeal(date, mealType, name, carbs, protein, fruitVeggies, calories)` | – | Mahlzeit erstellen/aktualisieren |
+| `updateMeal(id, mealType, name, carbs, protein, fruitVeggies, calories)` | – | Mahlzeit aktualisieren |
 | `deleteMeal(id)` | `id: number` | Mahlzeit löschen |
 | `getWorkouts(date)` | `date: string` | Training eines Tages laden |
 | `getWorkoutsRange(start, end)` | `start, end: string` | Training im Zeitraum laden |

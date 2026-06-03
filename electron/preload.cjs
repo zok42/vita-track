@@ -3,10 +3,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('api', {
   getMeals: (date) => ipcRenderer.invoke('get-meals', date),
   getMealsRange: (start, end) => ipcRenderer.invoke('get-meals-range', start, end),
-  upsertMeal: (date, mealType, name, carbs, protein, fruitVeggies) =>
-    ipcRenderer.invoke('upsert-meal', date, mealType, name, carbs, protein, fruitVeggies),
-  updateMeal: (id, mealType, name, carbs, protein, fruitVeggies) =>
-    ipcRenderer.invoke('update-meal', id, mealType, name, carbs, protein, fruitVeggies),
+  upsertMeal: (date, mealType, name, carbs, protein, fruitVeggies, calories) =>
+    ipcRenderer.invoke('upsert-meal', date, mealType, name, carbs, protein, fruitVeggies, calories),
+  updateMeal: (id, mealType, name, carbs, protein, fruitVeggies, calories) =>
+    ipcRenderer.invoke('update-meal', id, mealType, name, carbs, protein, fruitVeggies, calories),
   deleteMeal: (id) => ipcRenderer.invoke('delete-meal', id),
   getWorkouts: (date) => ipcRenderer.invoke('get-workouts', date),
   getWorkoutsRange: (start, end) => ipcRenderer.invoke('get-workouts-range', start, end),

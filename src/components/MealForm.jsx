@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 
 const mealTypes = [
-  { value: 'breakfast', label: 'Frühstück' },
-  { value: 'lunch', label: 'Mittagessen' },
-  { value: 'dinner', label: 'Abendessen' },
-  { value: 'snack', label: 'Zwischenmahlzeit' },
+  { value: 'breakfast', label: '🌅 Frühstück' },
+  { value: 'lunch', label: '☀️ Mittagessen' },
+  { value: 'dinner', label: '🌙 Abendessen' },
+  { value: 'snack', label: '🍎 Zwischenmahlzeit' },
 ];
 
 export default function MealForm({ date, onSaved, mealToEdit = null, onCancel }) {
@@ -13,6 +13,7 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
   const [carbs, setCarbs] = useState('');
   const [protein, setProtein] = useState('');
   const [fruitVeggies, setFruitVeggies] = useState('');
+  const [calories, setCalories] = useState('');
 
   useEffect(() => {
     if (mealToEdit) {
@@ -21,18 +22,22 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
       setCarbs(String(mealToEdit.carbs));
       setProtein(String(mealToEdit.protein));
       setFruitVeggies(String(mealToEdit.fruit_veggies));
+      setCalories(String(mealToEdit.calories ?? ''));
     } else {
       setMealType('breakfast');
       setName('');
       setCarbs('');
       setProtein('');
       setFruitVeggies('');
+      setCalories('');
     }
   }, [mealToEdit]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!mealType) return;
+
+    const calVal = calories ? parseFloat(calories) : 0;
 
     if (mealToEdit) {
       await window.api.updateMeal(
@@ -42,6 +47,7 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
         parseFloat(carbs) || 0,
         parseFloat(protein) || 0,
         parseFloat(fruitVeggies) || 0,
+        calVal,
       );
     } else {
       await window.api.upsertMeal(
@@ -51,6 +57,7 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
         parseFloat(carbs) || 0,
         parseFloat(protein) || 0,
         parseFloat(fruitVeggies) || 0,
+        calVal,
       );
     }
 
@@ -58,6 +65,7 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
     setCarbs('');
     setProtein('');
     setFruitVeggies('');
+    setCalories('');
     setMealType('breakfast');
     onSaved();
   }
@@ -69,13 +77,17 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
   return (
     <form className="meal-form" onSubmit={handleSubmit}>
       <div className="form-row">
-        <label>
+        <label style={{ flex: 2 }}>
           Mahlzeit
           <select value={mealType} onChange={(e) => setMealType(e.target.value)}>
             {mealTypes.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
+        </label>
+        <label style={{ flex: 1 }}>
+          Kalorien (kcal)
+          <input type="number" step="1" min="0" value={calories} onChange={(e) => setCalories(e.target.value)} />
         </label>
       </div>
 

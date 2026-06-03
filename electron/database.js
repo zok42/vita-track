@@ -18,6 +18,7 @@ export function initDatabase() {
        carbs REAL NOT NULL DEFAULT 0,
        protein REAL NOT NULL DEFAULT 0,
        fruit_veggies REAL NOT NULL DEFAULT 0,
+       calories REAL NOT NULL DEFAULT 0,
        created_at TEXT DEFAULT (datetime('now'))
      );
 
@@ -53,6 +54,10 @@ export function initDatabase() {
    }
 
    try {
+     db.exec(`ALTER TABLE meals ADD COLUMN calories REAL NOT NULL DEFAULT 0`);
+   } catch {}
+
+   try {
      db.exec(`ALTER TABLE workouts ADD COLUMN calories REAL NOT NULL DEFAULT 0`);
    } catch {
    }
@@ -73,26 +78,26 @@ export function getMealsRange(startDate, endDate) {
   return db.prepare("SELECT * FROM meals WHERE date >= ? AND date <= ? ORDER BY date, CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snack' THEN 4 END").all(startDate, endDate);
 }
 
-export function upsertMeal(date, mealType, name, carbs, protein, fruitVeggies) {
+export function upsertMeal(date, mealType, name, carbs, protein, fruitVeggies, calories = 0) {
   const existing = db.prepare('SELECT id FROM meals WHERE date = ? AND meal_type = ?').get(date, mealType);
   if (existing) {
-    db.prepare('UPDATE meals SET name = ?, carbs = ?, protein = ?, fruit_veggies = ? WHERE id = ?')
-      .run(name, carbs, protein, fruitVeggies, existing.id);
+    db.prepare('UPDATE meals SET name = ?, carbs = ?, protein = ?, fruit_veggies = ?, calories = ? WHERE id = ?')
+      .run(name, carbs, protein, fruitVeggies, calories, existing.id);
     return { id: existing.id, date, meal_type: mealType };
   } else {
-    const result = db.prepare('INSERT INTO meals (date, meal_type, name, carbs, protein, fruit_veggies) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(date, mealType, name, carbs, protein, fruitVeggies);
+    const result = db.prepare('INSERT INTO meals (date, meal_type, name, carbs, protein, fruit_veggies, calories) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(date, mealType, name, carbs, protein, fruitVeggies, calories);
     return { id: result.lastInsertRowid, date, meal_type: mealType };
   }
 }
 
-export function updateMeal(id, mealType, name, carbs, protein, fruitVeggies) {
+export function updateMeal(id, mealType, name, carbs, protein, fruitVeggies, calories = 0) {
   db.prepare(`
     UPDATE meals 
-    SET meal_type = ?, name = ?, carbs = ?, protein = ?, fruit_veggies = ?
+    SET meal_type = ?, name = ?, carbs = ?, protein = ?, fruit_veggies = ?, calories = ?
     WHERE id = ?
-  `).run(mealType, name, carbs, protein, fruitVeggies, id);
-  return { id, meal_type: mealType, name, carbs, protein, fruit_veggies };
+  `).run(mealType, name, carbs, protein, fruitVeggies, calories, id);
+  return { id, meal_type: mealType, name, carbs, protein, fruit_veggies, calories };
 }
 
 export function deleteMeal(id) {
@@ -132,9 +137,10 @@ export function getDailySummary(date) {
   const totals = db.prepare(`
     SELECT COALESCE(SUM(carbs),0) as total_carbs,
            COALESCE(SUM(protein),0) as total_protein,
-           COALESCE(SUM(fruit_veggies),0) as total_fruit_veggies
+           COALESCE(SUM(fruit_veggies),0) as total_fruit_veggies,
+           COALESCE(SUM(calories),0) as total_calories
     FROM meals WHERE date = ?
-  `).get(date) ?? { total_carbs: 0, total_protein: 0, total_fruit_veggies: 0 };
+  `).get(date) ?? { total_carbs: 0, total_protein: 0, total_fruit_veggies: 0, total_calories: 0 };
   const workouts = db.prepare('SELECT * FROM workouts WHERE date = ?').all(date);
   return { meals, meals_total: totals, workouts };
 }
