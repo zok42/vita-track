@@ -9,8 +9,102 @@ Desktop-Anwendung zur Erfassung und Übersicht von Ernährung und Training.
 | Frontend    | React 18 + Vite                     |
 | Desktop     | Electron 33                         |
 | Datenbank   | SQLite (better-sqlite3)             |
+| PDF-Export  | PDFKit                              |
 | Build       | Vite (Frontend), electron-builder   |
 | Sprache     | JavaScript (ESM + JSX)              |
+
+## Architektur
+
+```mermaid
+graph TB
+    subgraph "Electron Hauptprozess (Node.js)"
+        MAIN["electron/main.js<br/>Fenster-Management, IPC-Handler"]
+        DB["electron/database.js<br/>SQLite CRUD-Operationen"]
+        PDF["electron/pdf.cjs<br/>PDF-Generierung (PDFKit)"]
+        SQLITE[("vitatrack.db<br/>SQLite")]
+    end
+
+    subgraph "Preload-Bridge"
+        PRELOAD["electron/preload.cjs<br/>contextBridge → window.api"]
+    end
+
+    subgraph "Renderer-Prozess (Browser)"
+        REACT["React App<br/>src/App.jsx"]
+        subgraph "UI-Komponenten"
+            DASH["Dashboard.jsx<br/>Kalender: Monat / Woche / Tag"]
+            MF["MealForm.jsx<br/>Mahlzeiten erfassen"]
+            ML["MealList.jsx<br/>Mahlzeiten anzeigen"]
+            WF["WorkoutForm.jsx<br/>Training erfassen"]
+            WL["WorkoutList.jsx<br/>Training anzeigen"]
+            RM["ReportModal.jsx<br/>PDF-Zeitraum wählen"]
+        end
+    end
+
+    subgraph "Build-Pipeline"
+        VITE["Vite<br/>Dev-Server + Bundler"]
+        EB["electron-builder<br/>Installierbares Paket"]
+    end
+
+    REACT --> DASH
+    REACT --> MF
+    REACT --> ML
+    REACT --> WF
+    REACT --> WL
+    REACT --> RM
+
+    REACT -- "window.api.*()" --> PRELOAD
+    PRELOAD -- "ipcRenderer.invoke()" --> MAIN
+    MAIN -- "ipcMain.handle()" --> PRELOAD
+    PRELOAD -- "Rückgabewerte" --> REACT
+
+    MAIN --> DB
+    MAIN --> PDF
+    DB <--> SQLITE
+    PDF -- "Speichern" --> DISK["Dateisystem<br/>*.pdf"]
+
+    REACT -- "npm run dev" --> VITE
+    VITE -- "npm run electron:dev" --> MAIN
+    VITE -- "npm run electron:build" --> EB
+
+    style MAIN fill:#1a1a2e,color:#fff
+    style PRELOAD fill:#e94560,color:#fff
+    style REACT fill:#2196f3,color:#fff
+    style DB fill:#4caf50,color:#fff
+    style PDF fill:#ff9800,color:#fff
+    style SQLITE fill:#795548,color:#fff
+```
+
+### Datenfluss
+
+```mermaid
+sequenceDiagram
+    participant User as Benutzer
+    participant UI as React
+    participant Bridge as preload.cjs
+    participant Main as main.js
+    participant DB as database.js
+    participant SQLite as vitatrack.db
+
+    User->>UI: Klick Speichern
+    UI->>Bridge: window.api.upsertMeal(...)
+    Bridge->>Main: ipcRenderer.invoke
+    Main->>DB: upsertMeal(...)
+    DB->>SQLite: INSERT / UPDATE
+    SQLite-->>DB: OK
+    DB-->>Main: id, date, meal_number
+    Main-->>Bridge: Rueckgabewert
+    Bridge-->>UI: Promise aufgeloest
+    UI->>UI: setLoadKey, useEffect, Neuladen
+    UI->>Bridge: window.api.getMeals(date)
+    Bridge->>Main: ipcRenderer.invoke
+    Main->>DB: getMeals(date)
+    DB->>SQLite: SELECT
+    SQLite-->>DB: Zeilen
+    DB-->>Main: Array von Meals
+    Main-->>Bridge: Daten
+    Bridge-->>UI: meals Array
+    UI->>User: Aktualisierte Anzeige
+```
 
 ## Funktionen
 
@@ -43,7 +137,8 @@ vita-track/
 ├── electron/
 │   ├── main.js              # Electron-Hauptprozess, Fenster, IPC
 │   ├── preload.cjs          # Context-Bridge (Renderer <-> Main)
-│   └── database.js          # SQLite-Schema, CRUD-Operationen
+│   ├── database.js          # SQLite-Schema, CRUD-Operationen
+│   └── pdf.cjs              # PDF-Generierung (PDFKit)
 ├── src/
 │   ├── main.jsx             # React-Einstiegspunkt
 │   ├── App.jsx              # Hauptkomponente, Navigation, Zustand
@@ -53,7 +148,8 @@ vita-track/
 │       ├── MealForm.jsx     # Mahlzeiten-Formular
 │       ├── MealList.jsx     # Mahlzeiten-Liste
 │       ├── WorkoutForm.jsx  # Trainings-Formular
-│       └── WorkoutList.jsx  # Trainings-Liste
+│       ├── WorkoutList.jsx  # Trainings-Liste
+│       └── ReportModal.jsx  # PDF-Zeitraum-Auswahl
 ├── index.html
 ├── vite.config.js
 └── package.json
@@ -88,6 +184,28 @@ npm run electron:build
 Das installierbare Paket liegt anschließend im Ordner `release/`.
 
 ## Datenbank-Schema
+
+```mermaid
+erDiagram
+    meals {
+        int id
+        string date
+        int meal_number
+        string name
+        float carbs
+        float protein
+        float fruit_veggies
+        string created_at
+    }
+    workouts {
+        int id
+        string date
+        string type
+        int duration
+        string intensity
+        string created_at
+    }
+```
 
 ```sql
 -- Mahlzeiten
