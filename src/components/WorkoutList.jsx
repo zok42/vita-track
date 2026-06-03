@@ -1,19 +1,43 @@
-const typeLabels = { walking: 'Spazieren', cycling: 'Radfahren', swimming: 'Schwimmen' };
+const typeLabels = { 
+  walking: 'Spazieren', 
+  cycling: 'Radfahren', 
+  swimming: 'Schwimmen',
+  workout: 'Workout',
+  'tai chi': 'Tai Chi',
+  paddling: 'Paddeln'
+};
 const intensityLabels = { light: 'locker', medium: 'mittel', high: 'hoch' };
 
-export default function WorkoutList({ workouts, onDelete }) {
+export default function WorkoutList({ workouts, onDelete, onEdit }) {
   if (workouts.length === 0) return <p className="empty">Keine Trainings erfasst</p>;
 
   return (
-    <div className="workout-list">
-      {workouts.map((w) => (
-        <div key={w.id} className="workout-item">
-          <div className="workout-details">
-            <strong>{typeLabels[w.type]}</strong> — {w.duration}min, {intensityLabels[w.intensity]}
-          </div>
-          <button className="btn-delete" onClick={() => onDelete(w.id)}>Löschen</button>
-        </div>
-      ))}
-    </div>
+    <table className="workout-table">
+      <thead>
+        <tr>
+          <th>Art</th>
+          <th>Dauer (min)</th>
+          <th>Kalorien (kcal)</th>
+          <th>Puls (bpm)</th>
+          <th>Intensität</th>
+          <th className="actions">Aktionen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {workouts.map((w, index) => (
+          <tr key={w.id} className={index % 2 === 0 ? 'even' : 'odd'}>
+            <td>{typeLabels[w.type]}</td>
+            <td>{w.duration}</td>
+            <td>{w.calories > 0 ? w.calories : '-'}</td>
+            <td>{w.avg_heart_rate > 0 ? w.avg_heart_rate : '-'}</td>
+            <td>{intensityLabels[w.intensity]}</td>
+            <td className="actions">
+              <button className="btn-edit" onClick={() => onEdit(w)} title="Bearbeiten">✏️</button>
+              <button className="btn-delete" onClick={() => onDelete(w.id)} title="Löschen">🗑️</button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

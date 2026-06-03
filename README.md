@@ -33,10 +33,11 @@ graph TB
         subgraph "UI-Komponenten"
             DASH["Dashboard.jsx<br/>Kalender: Monat / Woche / Tag"]
             MF["MealForm.jsx<br/>Mahlzeiten erfassen"]
-            ML["MealList.jsx<br/>Mahlzeiten anzeigen"]
+            ML["MealList.jsx<br/>Mahlzeiten-Tabelle"]
             WF["WorkoutForm.jsx<br/>Training erfassen"]
-            WL["WorkoutList.jsx<br/>Training anzeigen"]
+            WL["WorkoutList.jsx<br/>Training-Tabelle"]
             RM["ReportModal.jsx<br/>PDF-Zeitraum wählen"]
+            RV["ReportView.jsx<br/>Bericht mit Charts"]
         end
     end
 
@@ -51,6 +52,7 @@ graph TB
     REACT --> WF
     REACT --> WL
     REACT --> RM
+    REACT --> RV
 
     REACT -- "window.api.*()" --> PRELOAD
     PRELOAD -- "ipcRenderer.invoke()" --> MAIN
@@ -91,10 +93,10 @@ sequenceDiagram
     Main->>DB: upsertMeal(...)
     DB->>SQLite: INSERT / UPDATE
     SQLite-->>DB: OK
-    DB-->>Main: id, date, meal_number
+    DB-->>Main: id, date, meal_type
     Main-->>Bridge: Rueckgabewert
     Bridge-->>UI: Promise aufgeloest
-    UI->>UI: setLoadKey, useEffect, Neuladen
+    UI->>UI: Neuladen der Daten
     UI->>Bridge: window.api.getMeals(date)
     Bridge->>Main: ipcRenderer.invoke
     Main->>DB: getMeals(date)
@@ -108,27 +110,55 @@ sequenceDiagram
 
 ## Funktionen
 
+### Navigation
+- **Dashboard**: Kalender mit Monats-, Wochen- und Tagesansicht
+- **Tag erfassen**: Mahlzeiten und Training für ein Datum erfassen/bearbeiten
+- **Bericht**: Diagramme und Statistiken für einen frei wählbaren Zeitraum
+
 ### Mahlzeiten
-- 3 Mahlzeiten pro Tag (Frühstück, Mittagessen, Abendessen)
-- Erfassung des Gerichtsnamens
+- 4 Mahlzeitentypen: Frühstück, Mittagessen, Abendessen, Zwischenmahlzeit
+- Erfassung des Gerichtsnamens (bis 256 Zeichen)
 - Erfassung von Kohlenhydraten, Protein und Obst/Gemüse in Gramm
-- Überschreiben bestehender Einträge
+- Tabelle mit Bearbeiten (✏️) und Löschen (🗑️) Funktionen
+- Alternierende Zeilenfarben für bessere Lesbarkeit
 
 ### Training
-- Trainingsarten: Spazieren, Radfahren, Schwimmen
+- Trainingsarten: Spazieren, Radfahren, Schwimmen, Workout, Tai Chi, Paddeln
 - Dauer in Minuten
 - Intensität: locker, mittel, hoch
-- Beliebig viele Einträge pro Tag
+- Kalorienverbrauch (kcal)
+- Durchschnittspuls (bpm)
+- Tabelle mit Bearbeiten (✏️) und Löschen (🗑️) Funktionen
+- Alternierende Zeilenfarben für bessere Lesbarkeit
 
 ### Dashboard
 - **Monatsansicht**: Kalender mit farbigen Indikatoren für Tage mit Mahlzeiten/Training
 - **Wochenansicht**: 7-Tage-Raster mit Nährstoff- und Trainingsübersicht
 - **Tagesansicht**: Detaillierte Zusammenfassung eines einzelnen Tages
 
+### Bericht (In-App)
+- Frei wählbarer Datumsbereich (Von/Bis)
+- Zusammenfassungskarten (Ernährung & Training Gesamt)
+- Balkendiagramme:
+  - Makronährstoffe Gesamt (KH, Protein, Obst/Gemüse)
+  - Trainingsdauer nach Art
+  - Training nach Intensität
+  - Makronährstoffe nach Mahlzeit
+- Tagesverlauf-Diagramm mit KH, Protein und Training pro Tag
+
+### PDF-Bericht
+- Export über "PDF-Bericht" Button
+- Deckblatt mit Zeitraum
+- Wochen-Zusammenfassung Training (Matrix: Art × Intensität)
+- Balkendiagramme (Makronährstoffe, Trainingsdauer)
+- Detaillierte Tageseinträge mit Mahlzeiten und Training
+- Fußzeile mit Seitennummer und Erstellungsdatum
+
 ### Datenhaltung
 - Lokale SQLite-Datenbank (`better-sqlite3`)
 - Gespeichert im Electron-Benutzerdatenverzeichnis (`vitatrack.db`)
 - WAL-Journal-Mode für bessere Performance
+- Automatische Migration von `meal_number` → `meal_type`
 
 ## Projektstruktur
 
@@ -137,20 +167,23 @@ vita-track/
 ├── electron/
 │   ├── main.js              # Electron-Hauptprozess, Fenster, IPC
 │   ├── preload.cjs          # Context-Bridge (Renderer <-> Main)
-│   ├── database.js          # SQLite-Schema, CRUD-Operationen
-│   └── pdf.cjs              # PDF-Generierung (PDFKit)
+│   ├── database.js          # SQLite-Schema, CRUD-Operationen, Migration
+│   └── pdf.cjs              # PDF-Generierung (PDFKit) mit Charts
 ├── src/
 │   ├── main.jsx             # React-Einstiegspunkt
 │   ├── App.jsx              # Hauptkomponente, Navigation, Zustand
-│   ├── App.css              # Globales Styling
+│   ├── App.css              # Globales Styling, Tabellen, Charts
 │   └── components/
 │       ├── Dashboard.jsx    # Kalender-Ansichten (Monat/Woche/Tag)
-│       ├── MealForm.jsx     # Mahlzeiten-Formular
-│       ├── MealList.jsx     # Mahlzeiten-Liste
-│       ├── WorkoutForm.jsx  # Trainings-Formular
-│       ├── WorkoutList.jsx  # Trainings-Liste
-│       └── ReportModal.jsx  # PDF-Zeitraum-Auswahl
-├── index.html
+│       ├── MealForm.jsx     # Mahlzeiten-Formular mit Typ-Dropdown
+│       ├── MealList.jsx     # Mahlzeiten-Tabelle mit Bearbeiten/Löschen
+│       ├── WorkoutForm.jsx  # Trainings-Formular mit Kalorien/Puls
+│       ├── WorkoutList.jsx  # Trainings-Tabelle mit Bearbeiten/Löschen
+│       ├── ReportModal.jsx  # PDF-Zeitraum-Auswahl
+│       └── ReportView.jsx   # In-App Bericht mit Diagrammen
+├── src/assets/
+│   └── logo.svg             # Anwendungs-Logo
+├── index.html               # HTML-Entry mit Favicon
 ├── vite.config.js
 └── package.json
 ```
@@ -190,7 +223,7 @@ erDiagram
     meals {
         int id
         string date
-        int meal_number
+        string meal_type
         string name
         float carbs
         float protein
@@ -203,6 +236,8 @@ erDiagram
         string type
         int duration
         string intensity
+        float calories
+        int avg_heart_rate
         string created_at
     }
 ```
@@ -212,7 +247,7 @@ erDiagram
 CREATE TABLE meals (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   date          TEXT NOT NULL,         -- YYYY-MM-DD
-  meal_number   INTEGER NOT NULL CHECK(meal_number IN (1,2,3)),
+  meal_type     TEXT NOT NULL CHECK(meal_type IN ('breakfast','lunch','dinner','snack')),
   name          TEXT NOT NULL DEFAULT '',
   carbs         REAL NOT NULL DEFAULT 0,
   protein       REAL NOT NULL DEFAULT 0,
@@ -222,14 +257,34 @@ CREATE TABLE meals (
 
 -- Training
 CREATE TABLE workouts (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  date       TEXT NOT NULL,            -- YYYY-MM-DD
-  type       TEXT NOT NULL CHECK(type IN ('walking','cycling','swimming')),
-  duration   INTEGER NOT NULL,
-  intensity  TEXT NOT NULL CHECK(intensity IN ('light','medium','high')),
-  created_at TEXT DEFAULT (datetime('now'))
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  date           TEXT NOT NULL,            -- YYYY-MM-DD
+  type           TEXT NOT NULL CHECK(type IN ('walking','cycling','swimming')),
+  duration       INTEGER NOT NULL,
+  intensity      TEXT NOT NULL CHECK(intensity IN ('light','medium','high')),
+  calories       REAL NOT NULL DEFAULT 0,
+  avg_heart_rate INTEGER NOT NULL DEFAULT 0,
+  created_at     TEXT DEFAULT (datetime('now'))
 );
 ```
+
+## API-Referenz (window.api)
+
+| Methode | Parameter | Beschreibung |
+| ------- | --------- | ------------ |
+| `getMeals(date)` | `date: string` | Mahlzeiten eines Tages laden |
+| `getMealsRange(start, end)` | `start, end: string` | Mahlzeiten im Zeitraum laden |
+| `upsertMeal(date, mealType, name, carbs, protein, fruitVeggies)` | – | Mahlzeit erstellen/aktualisieren |
+| `updateMeal(id, mealType, name, carbs, protein, fruitVeggies)` | – | Mahlzeit aktualisieren |
+| `deleteMeal(id)` | `id: number` | Mahlzeit löschen |
+| `getWorkouts(date)` | `date: string` | Training eines Tages laden |
+| `getWorkoutsRange(start, end)` | `start, end: string` | Training im Zeitraum laden |
+| `addWorkout(date, type, duration, intensity, calories, avgHeartRate)` | – | Training hinzufügen |
+| `updateWorkout(id, type, duration, intensity, calories, avgHeartRate)` | – | Training aktualisieren |
+| `deleteWorkout(id)` | `id: number` | Training löschen |
+| `getDailySummary(date)` | `date: string` | Tageszusammenfassung laden |
+| `getMonthSummary(year, month)` | `year, month: number` | Monatszusammenfassung laden |
+| `generatePdfReport(startDate, endDate)` | `start, end: string` | PDF-Bericht generieren |
 
 ## Systemvoraussetzungen
 

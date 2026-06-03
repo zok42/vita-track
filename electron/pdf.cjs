@@ -1,7 +1,7 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 
-const MEAL_NAMES   = { 1: 'Frühstück', 2: 'Mittagessen', 3: 'Abendessen' };
+const MEAL_NAMES   = { breakfast: 'Frühstück', lunch: 'Mittagessen', dinner: 'Abendessen', snack: 'Zwischenmahlzeit' };
 const TYPE_LABELS  = { walking: 'Spazieren', cycling: 'Radfahren', swimming: 'Schwimmen' };
 const INTENS_LABELS = { light: 'locker', medium: 'mittel', high: 'hoch' };
 
@@ -158,12 +158,101 @@ function generatePDF(outputPath, days, startDate, endDate) {
             .text('Gesamt', col.type + 4, wtY + 4, { width: 115 })
             .text(`${weekTotalCount}x ${weekTotalDur}min`, col.total, wtY + 4, { width: 90, align: 'right' });
          doc.y = wtY + 22;
+      }
+    }
+
+      // ── Charts ───────────────────────────────────────────────────────
+     if (days.length > 0) {
+       if (doc.y > doc.page.height - 200) doc.addPage();
+
+       doc.fillColor('#2196f3').fontSize(12).font('Helvetica-Bold')
+          .text('Charts', 50, doc.y + 4);
+       doc.y += 10;
+
+       // Prepare data for macros chart (average per day)
+       const macroSums = { carbs: 0, protein: 0, fruit_veggies: 0 };
+       let daysWithMeals = 0;
+       for (const day of days) {
+         if (day.meals.length > 0) {
+           daysWithMeals++;
+           for (const meal of day.meals) {
+             macroSums.carbs   += meal.carbs;
+             macroSums.protein += meal.protein;
+             macroSums.fruit_veggies += meal.fruit_veggies;
+           }
+         }
        }
+       const macroAvg = daysWithMeals > 0 ? {
+         carbs:   macroSums.carbs   / daysWithMeals,
+         protein: macroSums.protein / daysWithMeals,
+         fruit_veggies: macroSums.fruit_veggies / daysWithMeals
+       } : { carbs: 0, protein: 0, fruit_veggies: 0 };
+
+       // Prepare data for workout duration per type
+       const workoutTotals = { walking: 0, cycling: 0, swimming: 0 };
+       for (const day of days) {
+         for (const w of day.workouts) {
+           if (workoutTotals[w.type] !== undefined) {
+             workoutTotals[w.type] += w.duration;
+           }
+         }
+       }
+
+       // Draw two bar charts side by side
+       const chartWidth = (doc.page.width - 100) / 2 - 20; // each chart width with gap
+       const chartHeight = 100;
+       const leftX = 50;
+       const rightX = 50 + chartWidth + 20;
+       const chartY = doc.y;
+
+       // --- Macros Chart ---
+       doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
+          .text('Durchschnittliche Makronährstoffe pro Tag', leftX, chartY);
+       doc.y += 20;
+
+       const macroData = [
+         { label: 'KH', value: Math.round(macroAvg.carbs),   color: '#4caf50' },
+         { label: 'Prot', value: Math.round(macroAvg.protein), color: '#2196f3' },
+         { label: 'Gemüse/Obst', value: Math.round(macroAvg.fruit_veggies), color: '#ff9800' }
+       ];
+       const macroMax = Math.max(...macroData.map(d => d.value)) || 1;
+       macroData.forEach((item, index) => {
+         const barY = chartY + 20 + index * 25;
+         const barWidth = (item.value / macroMax) * (chartWidth - 100);
+         doc.fillColor(item.color)
+            .rect(leftX + 80, barY, barWidth, 15)
+            .fill();
+         doc.fillColor(COL_GREY).fontSize(8)
+            .text(`${item.label}: ${item.value}g`, leftX, barY + 2, { width: 70, align: 'right' });
+       });
+
+       // --- Workout Chart ---
+       doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
+          .text('Trainingsdauer nach Art', rightX, chartY);
+       doc.y += 20;
+
+       const workoutData = [
+         { label: 'Spazieren', value: workoutTotals.walking,   color: '#8bc34a' },
+         { label: 'Radfahren', value: workoutTotals.cycling,   color: '#03a9f4' },
+         { label: 'Schwimmen', value: workoutTotals.swimming,  color: '#9c27b0' }
+       ];
+       const workoutMax = Math.max(...workoutData.map(d => d.value)) || 1;
+       workoutData.forEach((item, index) => {
+         const barY = chartY + 20 + index * 25;
+         const barWidth = (item.value / workoutMax) * (chartWidth - 100);
+         doc.fillColor(item.color)
+            .rect(rightX + 80, barY, barWidth, 15)
+            .fill();
+         doc.fillColor(COL_GREY).fontSize(8)
+            .text(`${item.label}: ${item.value} min`, rightX, barY + 2, { width: 70, align: 'right' });
+       });
+
+       doc.y = chartY + chartHeight + 20; // move y below charts
      }
 
-     // ── Tageseinträge ───────────────────────────────────────────────────────
-    for (const day of days) {
-      const pageWidth = doc.page.width - 100;
+      // ── Tageseinträge ───────────────────────────────────────────────────────
+     for (const day of days) {
+       const pageWidth = doc.page.width - 100;
 
       // Seitenumbruch wenn zu wenig Platz
       if (doc.y > doc.page.height - 180) doc.addPage();
@@ -201,7 +290,7 @@ function generatePDF(outputPath, days, startDate, endDate) {
 
           const mY = doc.y;
           doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
-             .text(MEAL_NAMES[meal.meal_number] || '', col.name + 4, mY, { width: 220 });
+             .text(MEAL_NAMES[meal.meal_type] || '', col.name + 4, mY, { width: 220 });
           doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica')
              .text(String(meal.carbs),         col.kh, mY, { width: 95,  align: 'right' })
              .text(String(meal.protein),        col.p,  mY, { width: 85,  align: 'right' })

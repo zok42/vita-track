@@ -7,10 +7,12 @@ import {
   getMeals,
   getMealsRange,
   upsertMeal,
+  updateMeal,
   deleteMeal,
   getWorkouts,
   getWorkoutsRange,
   addWorkout,
+  updateWorkout,
   deleteWorkout,
   getDailySummary,
   getMonthSummary,
@@ -51,15 +53,19 @@ function createWindow() {
 function registerIpcHandlers() {
   ipcMain.handle('get-meals', (_e, date) => getMeals(date));
   ipcMain.handle('get-meals-range', (_e, start, end) => getMealsRange(start, end));
-  ipcMain.handle('upsert-meal', (_e, date, mealNumber, name, carbs, protein, fruitVeggies) =>
-    upsertMeal(date, mealNumber, name, carbs, protein, fruitVeggies));
+  ipcMain.handle('upsert-meal', (_e, date, mealType, name, carbs, protein, fruitVeggies) =>
+    upsertMeal(date, mealType, name, carbs, protein, fruitVeggies));
+  ipcMain.handle('update-meal', (_e, id, mealType, name, carbs, protein, fruitVeggies) =>
+    updateMeal(id, mealType, name, carbs, protein, fruitVeggies));
   ipcMain.handle('delete-meal', (_e, id) => deleteMeal(id));
   ipcMain.handle('get-workouts', (_e, date) => getWorkouts(date));
   ipcMain.handle('get-workouts-range', (_e, start, end) => getWorkoutsRange(start, end));
-  ipcMain.handle('add-workout', (_e, date, type, duration, intensity) =>
-    addWorkout(date, type, duration, intensity));
-  ipcMain.handle('delete-workout', (_e, id) => deleteWorkout(id));
-  ipcMain.handle('get-daily-summary', (_e, date) => getDailySummary(date));
+   ipcMain.handle('add-workout', (_e, date, type, duration, intensity, calories, avgHeartRate) =>
+     addWorkout(date, type, duration, intensity, calories, avgHeartRate));
+   ipcMain.handle('delete-workout', (_e, id) => deleteWorkout(id));
+   ipcMain.handle('update-workout', (_e, id, type, duration, intensity, calories, avgHeartRate) =>
+     updateWorkout(id, type, duration, intensity, calories, avgHeartRate));
+   ipcMain.handle('get-daily-summary', (_e, date) => getDailySummary(date));
   ipcMain.handle('get-month-summary', (_e, year, month) => getMonthSummary(year, month));
 
   ipcMain.handle('generate-pdf-report', async (_e, startDate, endDate) => {

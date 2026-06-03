@@ -9,6 +9,8 @@ body {
   background: #f0f2f5;
   color: #1a1a2e;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app {
@@ -536,4 +538,377 @@ button[type="submit"]:hover {
   background: #e94560;
   color: #fff;
   border-color: #e94560;
+}
+
+/* Workout table */
+.workout-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  background: #fff;
+}
+
+.workout-table th,
+.workout-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.9rem;
+}
+
+.workout-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+.workout-table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.workout-table tbody tr.even {
+  background: #f8f9fa;
+}
+
+.workout-table tbody tr.odd {
+  background: #fff;
+}
+
+.workout-table tbody tr:hover {
+  background: #f0f2f5;
+}
+
+.workout-table .actions {
+  text-align: center;
+  width: 120px;
+}
+
+.workout-table .actions button {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.workout-table .actions button.btn-edit {
+  color: #2196f3;
+}
+
+.workout-table .actions button.btn-edit:hover {
+  background: rgba(33, 150, 243, 0.1);
+  color: #1976d2;
+}
+
+.workout-table .actions button.btn-delete {
+  color: #e94560;
+}
+
+.workout-table .actions button.btn-delete:hover {
+  background: rgba(233, 69, 96, 0.1);
+  color: #c62828;
+}
+
+/* Meal table */
+.meal-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  background: #fff;
+}
+
+.meal-table th,
+.meal-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.9rem;
+}
+
+.meal-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+.meal-table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.meal-table tbody tr.even {
+  background: #f8f9fa;
+}
+
+.meal-table tbody tr.odd {
+  background: #fff;
+}
+
+.meal-table tbody tr:hover {
+  background: #f0f2f5;
+}
+
+.meal-table .actions {
+  text-align: center;
+  width: 120px;
+}
+
+.meal-table .actions button {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.meal-table .actions button.btn-edit {
+  color: #2196f3;
+}
+
+.meal-table .actions button.btn-edit:hover {
+  background: rgba(33, 150, 243, 0.1);
+  color: #1976d2;
+}
+
+.meal-table .actions button.btn-delete {
+  color: #e94560;
+}
+
+.meal-table .actions button.btn-delete:hover {
+  background: rgba(233, 69, 96, 0.1);
+  color: #c62828;
+}
+
+/* Report View */
+.report-view {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.report-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.report-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.report-controls input[type="date"] {
+  padding: 6px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.report-period {
+  font-size: 0.9rem;
+  color: #666;
+  margin-left: auto;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.chart-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.chart-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.chart-card h4 {
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  color: #1a1a2e;
+}
+
+/* Bar Chart */
+.bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar-label {
+  width: 80px;
+  font-size: 0.85rem;
+  color: #555;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.bar-track {
+  flex: 1;
+  height: 20px;
+  background: #f0f2f5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+.bar-value {
+  width: 90px;
+  font-size: 0.85rem;
+  color: #333;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Timeline Chart */
+.timeline-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.timeline-header {
+  display: grid;
+  grid-template-columns: 100px 1fr 100px;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 2px solid #e0e0e0;
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.tl-label {
+  text-align: center;
+}
+
+.timeline-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 100px;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tl-date {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.tl-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tl-bar-track {
+  height: 10px;
+  background: #f0f2f5;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.tl-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  min-width: 1px;
+}
+
+.tl-values {
+  font-size: 0.8rem;
+  color: #333;
+  text-align: right;
+  font-weight: 600;
+}
+
+/* Stacked Bar Chart */
+.stacked-bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stacked-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stacked-bar-track {
+  flex: 1;
+  height: 24px;
+  background: #f0f2f5;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+}
+
+.stacked-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 20px;
+  margin-top: 16px;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
 }

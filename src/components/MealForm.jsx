@@ -1,129 +1,121 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
-const MEAL_NAMES = ['Frühstück', 'Mittagessen', 'Abendessen'];
-const EMPTY = { name: '', carbs: '', protein: '', fruitVeggies: '' };
+const mealTypes = [
+  { value: 'breakfast', label: 'Frühstück' },
+  { value: 'lunch', label: 'Mittagessen' },
+  { value: 'dinner', label: 'Abendessen' },
+  { value: 'snack', label: 'Zwischenmahlzeit' },
+];
 
-function fromDb(row) {
-  return {
-    name:         row.name ?? '',
-    carbs:        String(row.carbs),
-    protein:      String(row.protein),
-    fruitVeggies: String(row.fruit_veggies),
-  };
-}
+export default function MealForm({ date, onSaved, mealToEdit = null, onCancel }) {
+  const [mealType, setMealType] = useState('breakfast');
+  const [name, setName] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [protein, setProtein] = useState('');
+  const [fruitVeggies, setFruitVeggies] = useState('');
 
-export default function MealForm({ date, onSaved }) {
-  const [mealNumber, setMealNumber] = useState(1);
-  const [fields, setFields]         = useState(EMPTY);
-  const [loadKey, setLoadKey]       = useState(0);  // increment to force a DB reload
-  const drafts                      = useRef({});
-
-  // Load from DB when date, tab, or loadKey changes.
-  // Draft takes priority over DB value so ongoing edits are never overwritten.
   useEffect(() => {
-    const draftKey = `${date}|${mealNumber}`;
-    if (drafts.current[draftKey]) {
-      setFields(drafts.current[draftKey]);
-      return;
+    if (mealToEdit) {
+      setMealType(mealToEdit.meal_type);
+      setName(mealToEdit.name ?? '');
+      setCarbs(String(mealToEdit.carbs));
+      setProtein(String(mealToEdit.protein));
+      setFruitVeggies(String(mealToEdit.fruit_veggies));
+    } else {
+      setMealType('breakfast');
+      setName('');
+      setCarbs('');
+      setProtein('');
+      setFruitVeggies('');
     }
-    let cancelled = false;
-    window.api.getMeals(date).then((rows) => {
-      if (cancelled) return;
-      const row = rows.find((m) => m.meal_number === mealNumber);
-      setFields(row ? fromDb(row) : EMPTY);
-    });
-    return () => { cancelled = true; };
-  }, [date, mealNumber, loadKey]);
-
-  // Reset to tab 1 and wipe drafts when the date changes
-  const prevDate = useRef(date);
-  useEffect(() => {
-    if (prevDate.current === date) return;
-    drafts.current = {};
-    prevDate.current = date;
-    setMealNumber(1);
-    setFields(EMPTY);
-  }, [date]);
-
-  function set(field) {
-    return (e) => {
-      const val = e.target.value;
-      setFields((prev) => {
-        const next = { ...prev, [field]: val };
-        drafts.current[`${date}|${mealNumber}`] = next;
-        return next;
-      });
-    };
-  }
-
-  function selectMeal(num) {
-    if (num === mealNumber) return;
-    drafts.current[`${date}|${mealNumber}`] = fields;
-    setFields(drafts.current[`${date}|${num}`] ?? EMPTY);
-    setMealNumber(num);
-  }
+  }, [mealToEdit]);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    await window.api.upsertMeal(
-      date,
-      mealNumber,
-      fields.name,
-      parseFloat(fields.carbs)        || 0,
-      parseFloat(fields.protein)      || 0,
-      parseFloat(fields.fruitVeggies) || 0,
-    );
-    // discard draft so the useEffect reloads fresh data from DB
-    delete drafts.current[`${date}|${mealNumber}`];
-    setLoadKey((k) => k + 1);   // triggers useEffect → fresh DB read
+    if (!mealType) return;
+
+    if (mealToEdit) {
+      await window.api.updateMeal(
+        mealToEdit.id,
+        mealType,
+        name,
+        parseFloat(carbs) || 0,
+        parseFloat(protein) || 0,
+        parseFloat(fruitVeggies) || 0,
+      );
+    } else {
+      await window.api.upsertMeal(
+        date,
+        mealType,
+        name,
+        parseFloat(carbs) || 0,
+        parseFloat(protein) || 0,
+        parseFloat(fruitVeggies) || 0,
+      );
+    }
+
+    setName('');
+    setCarbs('');
+    setProtein('');
+    setFruitVeggies('');
+    setMealType('breakfast');
     onSaved();
+  }
+
+  function handleCancel() {
+    if (onCancel) onCancel();
   }
 
   return (
     <form className="meal-form" onSubmit={handleSubmit}>
-      <div className="meal-tabs">
-        {MEAL_NAMES.map((label, i) => (
-          <button
-            key={i + 1}
-            type="button"
-            className={mealNumber === i + 1 ? 'active' : ''}
-            onClick={() => selectMeal(i + 1)}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="form-row">
+        <label>
+          Mahlzeit
+          <select value={mealType} onChange={(e) => setMealType(e.target.value)}>
+            {mealTypes.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="form-field">
         <label>
           Gericht
           <textarea
-            value={fields.name}
-            onChange={set('name')}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             maxLength={256}
             rows={2}
             placeholder="z.B. Haferflocken mit Beeren"
           />
-          <span className="char-count">{fields.name.length}/256</span>
+          <span className="char-count">{name.length}/256</span>
         </label>
       </div>
 
       <div className="form-row">
         <label>
           Kohlenhydrate (g)
-          <input type="number" step="1" min="0" value={fields.carbs}        onChange={set('carbs')} />
+          <input type="number" step="1" min="0" value={carbs} onChange={(e) => setCarbs(e.target.value)} />
         </label>
         <label>
           Protein (g)
-          <input type="number" step="1" min="0" value={fields.protein}      onChange={set('protein')} />
+          <input type="number" step="1" min="0" value={protein} onChange={(e) => setProtein(e.target.value)} />
         </label>
         <label>
           Obst/Gemüse (g)
-          <input type="number" step="1" min="0" value={fields.fruitVeggies} onChange={set('fruitVeggies')} />
+          <input type="number" step="1" min="0" value={fruitVeggies} onChange={(e) => setFruitVeggies(e.target.value)} />
         </label>
       </div>
 
-      <button type="submit">Speichern</button>
+      <button type="submit">
+        {mealToEdit ? 'Speichern' : 'Hinzufügen'}
+      </button>
+      {mealToEdit && (
+        <button type="button" onClick={handleCancel} style={{ marginLeft: '10px' }}>
+          Abbrechen
+        </button>
+      )}
     </form>
   );
 }

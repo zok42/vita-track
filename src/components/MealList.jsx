@@ -1,24 +1,40 @@
-const mealNames = ['Frühstück', 'Mittagessen', 'Abendessen'];
+const typeLabels = {
+  breakfast: 'Frühstück',
+  lunch: 'Mittagessen',
+  dinner: 'Abendessen',
+  snack: 'Zwischenmahlzeit',
+};
 
-export default function MealList({ meals, onDelete }) {
+export default function MealList({ meals, onDelete, onEdit }) {
   if (meals.length === 0) return <p className="empty">Keine Mahlzeiten erfasst</p>;
 
   return (
-    <div className="meal-list">
-      {meals.map((meal) => (
-        <div key={meal.id} className="meal-item">
-          <div className="meal-header">{mealNames[meal.meal_number - 1]}</div>
-          <div className="meal-info">
-            <div className="meal-name">{meal.name || '—'}</div>
-            <div className="meal-nutrients">
-              <span>KH: {meal.carbs}g</span>
-              <span>P: {meal.protein}g</span>
-              <span>O/G: {meal.fruit_veggies}g</span>
-            </div>
-          </div>
-          <button className="btn-delete" onClick={() => onDelete(meal.id)}>Löschen</button>
-        </div>
-      ))}
-    </div>
+    <table className="meal-table">
+      <thead>
+        <tr>
+          <th>Mahlzeit</th>
+          <th>Gericht</th>
+          <th>KH (g)</th>
+          <th>Protein (g)</th>
+          <th>Obst/Gemüse (g)</th>
+          <th className="actions">Aktionen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {meals.map((m, index) => (
+          <tr key={m.id} className={index % 2 === 0 ? 'even' : 'odd'}>
+            <td>{typeLabels[m.meal_type]}</td>
+            <td>{m.name || '—'}</td>
+            <td>{m.carbs}</td>
+            <td>{m.protein}</td>
+            <td>{m.fruit_veggies}</td>
+            <td className="actions">
+              <button className="btn-edit" onClick={() => onEdit(m)} title="Bearbeiten">✏️</button>
+              <button className="btn-delete" onClick={() => onDelete(m.id)} title="Löschen">🗑️</button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
