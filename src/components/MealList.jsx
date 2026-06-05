@@ -13,6 +13,7 @@ export default function MealList({ meals, onDelete, onEdit }) {
       <thead>
         <tr>
           <th>Mahlzeit</th>
+          <th>Uhrzeit</th>
           <th>Gericht</th>
           <th>KH (g)</th>
           <th>Protein (g)</th>
@@ -25,6 +26,7 @@ export default function MealList({ meals, onDelete, onEdit }) {
         {meals.map((m, index) => (
           <tr key={m.id} className={index % 2 === 0 ? 'even' : 'odd'}>
             <td>{typeLabels[m.meal_type]}</td>
+            <td>{m.time || '—'}</td>
             <td>{m.name || '—'}</td>
             <td>{m.carbs}</td>
             <td>{m.protein}</td>

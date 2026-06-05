@@ -63,41 +63,45 @@ export function initDatabase() {
    }
 
    try {
-     db.exec(`ALTER TABLE workouts ADD COLUMN avg_heart_rate INTEGER NOT NULL DEFAULT 0`);
-   } catch {
-   }
+      db.exec(`ALTER TABLE workouts ADD COLUMN avg_heart_rate INTEGER NOT NULL DEFAULT 0`);
+    } catch {
+    }
+
+   try {
+      db.exec(`ALTER TABLE meals ADD COLUMN time TEXT NOT NULL DEFAULT ''`);
+    } catch {}
 
   return db;
 }
 
 export function getMeals(date) {
-  return db.prepare("SELECT * FROM meals WHERE date = ? ORDER BY CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snack' THEN 4 END").all(date);
+  return db.prepare("SELECT * FROM meals WHERE date = ? ORDER BY time, CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snack' THEN 4 END").all(date);
 }
 
 export function getMealsRange(startDate, endDate) {
-  return db.prepare("SELECT * FROM meals WHERE date >= ? AND date <= ? ORDER BY date, CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snack' THEN 4 END").all(startDate, endDate);
+  return db.prepare("SELECT * FROM meals WHERE date >= ? AND date <= ? ORDER BY date, time, CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snack' THEN 4 END").all(startDate, endDate);
 }
 
-export function upsertMeal(date, mealType, name, carbs, protein, fruitVeggies, calories = 0) {
+export function upsertMeal(date, mealType, name, carbs, protein, fruitVeggies, calories = 0, time = '') {
   const existing = db.prepare('SELECT id FROM meals WHERE date = ? AND meal_type = ?').get(date, mealType);
   if (existing) {
-    db.prepare('UPDATE meals SET name = ?, carbs = ?, protein = ?, fruit_veggies = ?, calories = ? WHERE id = ?')
-      .run(name, carbs, protein, fruitVeggies, calories, existing.id);
-    return { id: existing.id, date, meal_type: mealType };
+    db.prepare('UPDATE meals SET name = ?, carbs = ?, protein = ?, fruit_veggies = ?, calories = ?, time = ? WHERE id = ?')
+      .run(name, carbs, protein, fruitVeggies, calories, time, existing.id);
+    return { id: existing.id, date, meal_type: mealType, time };
   } else {
-    const result = db.prepare('INSERT INTO meals (date, meal_type, name, carbs, protein, fruit_veggies, calories) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(date, mealType, name, carbs, protein, fruitVeggies, calories);
-    return { id: result.lastInsertRowid, date, meal_type: mealType };
+    const result = db.prepare('INSERT INTO meals (date, meal_type, name, carbs, protein, fruit_veggies, calories, time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(date, mealType, name, carbs, protein, fruitVeggies, calories, time);
+    return { id: result.lastInsertRowid, date, meal_type: mealType, time };
   }
 }
 
-export function updateMeal(id, mealType, name, carbs, protein, fruitVeggies, calories = 0) {
+export function updateMeal(id, mealType, name, carbs, protein, fruitVeggies, calories = 0, time = '') {
   db.prepare(`
     UPDATE meals 
-    SET meal_type = ?, name = ?, carbs = ?, protein = ?, fruit_veggies = ?, calories = ?
+    SET meal_type = ?, name = ?, carbs = ?, protein = ?, fruit_veggies = ?, calories = ?, time = ?
     WHERE id = ?
-  `).run(mealType, name, carbs, protein, fruitVeggies, calories, id);
-  return { id, meal_type: mealType, name, carbs, protein, fruit_veggies, calories };
+  `).run(mealType, name, carbs, protein, fruitVeggies, calories, time, id);
+  return { id, meal_type: mealType, name, carbs, protein, fruitVeggies, calories, time };
 }
 
 export function deleteMeal(id) {
@@ -133,7 +137,7 @@ export function updateWorkout(id, type, duration, intensity, calories, avgHeartR
 }
 
 export function getDailySummary(date) {
-  const meals = db.prepare("SELECT * FROM meals WHERE date = ? ORDER BY CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snack' THEN 4 END").all(date);
+  const meals = db.prepare("SELECT * FROM meals WHERE date = ? ORDER BY time, CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snack' THEN 4 END").all(date);
   const totals = db.prepare(`
     SELECT COALESCE(SUM(carbs),0) as total_carbs,
            COALESCE(SUM(protein),0) as total_protein,
@@ -147,7 +151,7 @@ export function getDailySummary(date) {
 
 export function getReportData(startDate, endDate) {
   const meals = db.prepare(
-    "SELECT * FROM meals WHERE date >= ? AND date <= ? ORDER BY date, CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snack' THEN 4 END"
+    "SELECT * FROM meals WHERE date >= ? AND date <= ? ORDER BY date, time, CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snack' THEN 4 END"
   ).all(startDate, endDate);
   const workouts = db.prepare(
     'SELECT * FROM workouts WHERE date >= ? AND date <= ? ORDER BY date, created_at'
@@ -165,6 +169,50 @@ export function getReportData(startDate, endDate) {
   return Object.entries(days)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, data]) => ({ date, ...data }));
+}
+
+export function exportAllData() {
+  const meals = db.prepare('SELECT * FROM meals ORDER BY date, meal_type').all();
+  const workouts = db.prepare('SELECT * FROM workouts ORDER BY date, created_at').all();
+  return {
+    version: 1,
+    exported_at: new Date().toISOString(),
+    meals,
+    workouts,
+  };
+}
+
+export function importData(data) {
+  const checkMeal = db.prepare('SELECT id FROM meals WHERE date = ? AND meal_type = ?');
+  const updateMeal = db.prepare(
+    'UPDATE meals SET name=?, carbs=?, protein=?, fruit_veggies=?, calories=?, time=? WHERE id=?'
+  );
+  const insertMeal = db.prepare(
+    'INSERT INTO meals (date, meal_type, name, carbs, protein, fruit_veggies, calories, time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  );
+  const insertWorkout = db.prepare(
+    'INSERT INTO workouts (date, type, duration, intensity, calories, avg_heart_rate) VALUES (?, ?, ?, ?, ?, ?)'
+  );
+
+  const txn = db.transaction((data) => {
+    let mealsImported = 0, workoutsImported = 0;
+    for (const meal of data.meals || []) {
+      const existing = checkMeal.get(meal.date, meal.meal_type);
+      if (existing) {
+        updateMeal.run(meal.name, meal.carbs, meal.protein, meal.fruit_veggies, meal.calories, meal.time || '', existing.id);
+      } else {
+        insertMeal.run(meal.date, meal.meal_type, meal.name, meal.carbs, meal.protein, meal.fruit_veggies, meal.calories, meal.time || '');
+      }
+      mealsImported++;
+    }
+    for (const workout of data.workouts || []) {
+      insertWorkout.run(workout.date, workout.type, workout.duration, workout.intensity, workout.calories || 0, workout.avg_heart_rate || 0);
+      workoutsImported++;
+    }
+    return { meals: mealsImported, workouts: workoutsImported };
+  });
+
+  return txn(data);
 }
 
 export function getMonthSummary(year, month) {

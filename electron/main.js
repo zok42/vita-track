@@ -17,6 +17,8 @@ import {
   getDailySummary,
   getMonthSummary,
   getReportData,
+  exportAllData,
+  importData,
 } from './database.js';
 
 const require = createRequire(import.meta.url);
@@ -53,10 +55,10 @@ function createWindow() {
 function registerIpcHandlers() {
   ipcMain.handle('get-meals', (_e, date) => getMeals(date));
   ipcMain.handle('get-meals-range', (_e, start, end) => getMealsRange(start, end));
-  ipcMain.handle('upsert-meal', (_e, date, mealType, name, carbs, protein, fruitVeggies, calories) =>
-    upsertMeal(date, mealType, name, carbs, protein, fruitVeggies, calories));
-  ipcMain.handle('update-meal', (_e, id, mealType, name, carbs, protein, fruitVeggies, calories) =>
-    updateMeal(id, mealType, name, carbs, protein, fruitVeggies, calories));
+  ipcMain.handle('upsert-meal', (_e, date, mealType, name, carbs, protein, fruitVeggies, calories, time) =>
+    upsertMeal(date, mealType, name, carbs, protein, fruitVeggies, calories, time));
+  ipcMain.handle('update-meal', (_e, id, mealType, name, carbs, protein, fruitVeggies, calories, time) =>
+    updateMeal(id, mealType, name, carbs, protein, fruitVeggies, calories, time));
   ipcMain.handle('delete-meal', (_e, id) => deleteMeal(id));
   ipcMain.handle('get-workouts', (_e, date) => getWorkouts(date));
   ipcMain.handle('get-workouts-range', (_e, start, end) => getWorkoutsRange(start, end));
@@ -67,6 +69,36 @@ function registerIpcHandlers() {
      updateWorkout(id, type, duration, intensity, calories, avgHeartRate));
    ipcMain.handle('get-daily-summary', (_e, date) => getDailySummary(date));
   ipcMain.handle('get-month-summary', (_e, year, month) => getMonthSummary(year, month));
+
+  ipcMain.handle('export-json', async () => {
+    const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+      title: 'JSON-Export speichern',
+      defaultPath: `VitaTrack_Export_${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    });
+    if (canceled || !filePath) return { canceled: true };
+    const data = exportAllData();
+    const fs = (await import('fs')).promises;
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    return { canceled: false, filePath };
+  });
+
+  ipcMain.handle('import-json', async () => {
+    const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow, {
+      title: 'JSON-Import öffnen',
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      properties: ['openFile'],
+    });
+    if (canceled || !filePaths?.[0]) return { canceled: true };
+    const fs = (await import('fs')).promises;
+    const content = await fs.readFile(filePaths[0], 'utf-8');
+    const data = JSON.parse(content);
+    if (!data.version || !Array.isArray(data.meals) || !Array.isArray(data.workouts)) {
+      throw new Error('Ungültiges JSON-Format – kein VitaTrack-Export');
+    }
+    const result = importData(data);
+    return { canceled: false, filePath: filePaths[0], result };
+  });
 
   ipcMain.handle('generate-pdf-report', async (_e, startDate, endDate) => {
     const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {

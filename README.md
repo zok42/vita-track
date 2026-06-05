@@ -61,8 +61,10 @@ graph TB
 
     MAIN --> DB
     MAIN --> PDF
+    MAIN -- "exportAllData / importData" --> DB
     DB <--> SQLITE
     PDF -- "Speichern" --> DISK["Dateisystem<br/>*.pdf"]
+    MAIN -- "export-json / import-json" --> DISK
 
     REACT -- "npm run dev" --> VITE
     VITE -- "npm run electron:dev" --> MAIN
@@ -119,6 +121,7 @@ sequenceDiagram
 - 4 Mahlzeitentypen: 🌅 Frühstück, ☀️ Mittagessen, 🌙 Abendessen, 🍎 Zwischenmahlzeit
 - Erfassung des Gerichtsnamens (bis 256 Zeichen)
 - Erfassung von Kohlenhydraten, Protein, Obst/Gemüse und Kalorien
+- Erfassung der Uhrzeit (default: aktuelle Uhrzeit, frei änderbar)
 - Tabelle mit Bearbeiten (✏️) und Löschen (🗑️) Funktionen
 - Alternierende Zeilenfarben für bessere Lesbarkeit
 
@@ -153,6 +156,14 @@ sequenceDiagram
 - Balkendiagramme (Makronährstoffe, Trainingsdauer)
 - Detaillierte Tageseinträge mit Mahlzeiten und Training
 - Fußzeile mit Seitennummer und Erstellungsdatum
+
+### JSON-Import / Export
+- Export aller Daten als JSON-Datei über den 📤 Export-Button
+- Import aus JSON-Datei über den 📥 Import-Button
+- JSON-Format mit Version, Export-Datum, Mahlzeiten und Trainings
+- **Import-Verhalten**: Mahlzeiten werden per Datum + Mahlzeitentyp upgesert (bestehende überschrieben), Trainings werden immer neu eingefügt
+- Validierung des JSON-Formats beim Import
+- Ermöglicht Datensicherung und Übertragung zwischen Geräten
 
 ### Datenhaltung
 - Lokale SQLite-Datenbank (`better-sqlite3`)
@@ -220,23 +231,30 @@ Das installierbare Paket liegt anschließend im Ordner `release/`.
 
 ```mermaid
 erDiagram
+    datum ||--o{ meals : ""
+    datum ||--o{ workouts : ""
+
+    datum {
+        string date PK "YYYY-MM-DD"
+    }
     meals {
-        int id
-        string date
-        string meal_type
+        int id PK
+        string date FK
+        string meal_type "breakfast | lunch | dinner | snack"
         string name
         float carbs
         float protein
         float fruit_veggies
         float calories
+        string time "HH:MM"
         string created_at
     }
     workouts {
-        int id
-        string date
-        string type
+        int id PK
+        string date FK
+        string type "walking | cycling | swimming"
         int duration
-        string intensity
+        string intensity "light | medium | high"
         float calories
         int avg_heart_rate
         string created_at
@@ -254,6 +272,7 @@ CREATE TABLE meals (
   protein       REAL NOT NULL DEFAULT 0,
   fruit_veggies REAL NOT NULL DEFAULT 0,
   calories      REAL NOT NULL DEFAULT 0,
+  time          TEXT NOT NULL DEFAULT '', -- HH:MM
   created_at    TEXT DEFAULT (datetime('now'))
 );
 
@@ -276,8 +295,8 @@ CREATE TABLE workouts (
 | ------- | --------- | ------------ |
 | `getMeals(date)` | `date: string` | Mahlzeiten eines Tages laden |
 | `getMealsRange(start, end)` | `start, end: string` | Mahlzeiten im Zeitraum laden |
-| `upsertMeal(date, mealType, name, carbs, protein, fruitVeggies, calories)` | – | Mahlzeit erstellen/aktualisieren |
-| `updateMeal(id, mealType, name, carbs, protein, fruitVeggies, calories)` | – | Mahlzeit aktualisieren |
+| `upsertMeal(date, mealType, name, carbs, protein, fruitVeggies, calories, time?)` | – | Mahlzeit erstellen/aktualisieren |
+| `updateMeal(id, mealType, name, carbs, protein, fruitVeggies, calories, time?)` | – | Mahlzeit aktualisieren |
 | `deleteMeal(id)` | `id: number` | Mahlzeit löschen |
 | `getWorkouts(date)` | `date: string` | Training eines Tages laden |
 | `getWorkoutsRange(start, end)` | `start, end: string` | Training im Zeitraum laden |
@@ -287,6 +306,43 @@ CREATE TABLE workouts (
 | `getDailySummary(date)` | `date: string` | Tageszusammenfassung laden |
 | `getMonthSummary(year, month)` | `year, month: number` | Monatszusammenfassung laden |
 | `generatePdfReport(startDate, endDate)` | `start, end: string` | PDF-Bericht generieren |
+| `exportJson()` | – | Alle Daten als JSON-Datei exportieren |
+| `importJson()` | – | Daten aus JSON-Datei importieren (mit Dateiauswahl) |
+
+## JSON-Format
+
+```json
+{
+  "version": 1,
+  "exported_at": "2026-06-05T12:00:00.000Z",
+  "meals": [
+    {
+      "id": 1,
+      "date": "2026-06-01",
+      "meal_type": "breakfast",
+      "name": "Haferflocken mit Obst",
+      "carbs": 45,
+      "protein": 12,
+      "fruit_veggies": 80,
+      "calories": 350,
+      "time": "08:30",
+      "created_at": "2026-06-01 08:30:00"
+    }
+  ],
+  "workouts": [
+    {
+      "id": 1,
+      "date": "2026-06-01",
+      "type": "walking",
+      "duration": 30,
+      "intensity": "light",
+      "calories": 120,
+      "avg_heart_rate": 90,
+      "created_at": "2026-06-01 18:00:00"
+    }
+  ]
+}
+```
 
 ## Systemvoraussetzungen
 

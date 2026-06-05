@@ -61,6 +61,26 @@ export default function App() {
     setEditingWorkout(null);
   }
 
+  async function handleExportJson() {
+    try {
+      await window.api.exportJson();
+    } catch (e) {
+      alert('Export fehlgeschlagen: ' + e.message);
+    }
+  }
+
+  async function handleImportJson() {
+    try {
+      const result = await window.api.importJson();
+      if (!result.canceled) {
+        alert(`Import erfolgreich: ${result.result.meals} Mahlzeiten, ${result.result.workouts} Trainings`);
+        if (view === 'day') loadDayData(selectedDate);
+      }
+    } catch (e) {
+      alert('Import fehlgeschlagen: ' + e.message);
+    }
+  }
+
     return (
       <div className="app">
         <header className="app-header" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -92,6 +112,12 @@ export default function App() {
               value={selectedDate}
               onChange={(e) => handleDateChange(e.target.value)}
             />
+            <button className="btn-json" onClick={handleImportJson}>
+              📥 Import
+            </button>
+            <button className="btn-json" onClick={handleExportJson}>
+              📤 Export
+            </button>
             <button className="btn-report" onClick={() => setShowReport(true)}>
               PDF-Bericht
             </button>

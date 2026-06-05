@@ -1,9 +1,9 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 
-const MEAL_NAMES   = { breakfast: '🌅 Frühstück', lunch: '☀️ Mittagessen', dinner: '🌙 Abendessen', snack: '🍎 Zwischenmahlzeit' };
-const TYPE_LABELS  = { walking: '🚶 Spazieren', cycling: '🚴 Radfahren', swimming: '🏊 Schwimmen', workout: '💪 Workout', 'tai chi': '🧘 Tai Chi', paddling: '🛶 Paddeln' };
-const INTENS_LABELS = { light: '🟢 Locker', medium: '🟡 Mittel', high: '🔴 Hoch' };
+const MEAL_NAMES   = { breakfast: 'Frühstück', lunch: 'Mittagessen', dinner: 'Abendessen', snack: 'Zwischenmahlzeit' };
+const TYPE_LABELS  = { walking: 'Spazieren', cycling: 'Radfahren', swimming: 'Schwimmen', workout: 'Workout', 'tai chi': 'Tai Chi', paddling: 'Paddeln' };
+const INTENS_LABELS = { light: 'Locker', medium: 'Mittel', high: 'Hoch' };
 
 const COL_PRIMARY  = '#1a1a2e';
 const COL_ACCENT   = '#e94560';
@@ -42,9 +42,27 @@ function getWeekMonday(dateStr) {
 
 function generatePDF(outputPath, days, startDate, endDate) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
     const stream = fs.createWriteStream(outputPath);
     doc.pipe(stream);
+
+    let pageNumber = 1;
+
+    function writeFooter() {
+      const footerY = doc.page.height - doc.page.margins.bottom - 12;
+      doc.fillColor(COL_GREY).fontSize(8).font('Helvetica')
+         .text(
+           `Seite ${pageNumber}   |   Erstellt am ${new Date().toLocaleDateString('de-DE')}   |   VitaTrack`,
+           50, footerY,
+           { width: doc.page.width - 100, align: 'center' }
+         );
+    }
+
+    function addPageWithFooter() {
+      writeFooter();
+      doc.addPage();
+      pageNumber++;
+    }
 
     // ── Deckblatt-Header ────────────────────────────────────────────────────
     doc.rect(0, 0, doc.page.width, 110).fill(COL_PRIMARY);
@@ -87,7 +105,7 @@ function generatePDF(outputPath, days, startDate, endDate) {
          const sundayStr = sunday.toISOString().slice(0, 10);
          const weekLabel = `KW ${getISOWeekNumber(monday)} (${formatDateShort(monday)} – ${formatDateShort(sundayStr)})`;
 
-         if (doc.y > doc.page.height - 140) doc.addPage();
+        if (doc.y > doc.page.height - 160) addPageWithFooter();
 
          doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
             .text(weekLabel, 50, doc.y + 4);
@@ -163,7 +181,7 @@ function generatePDF(outputPath, days, startDate, endDate) {
 
       // ── Charts ───────────────────────────────────────────────────────
      if (days.length > 0) {
-       if (doc.y > doc.page.height - 200) doc.addPage();
+        if (doc.y > doc.page.height - 200) addPageWithFooter();
 
        doc.fillColor('#2196f3').fontSize(12).font('Helvetica-Bold')
           .text('Charts', 50, doc.y + 4);
@@ -257,8 +275,8 @@ function generatePDF(outputPath, days, startDate, endDate) {
      for (const day of days) {
        const pageWidth = doc.page.width - 100;
 
-      // Seitenumbruch wenn zu wenig Platz
-      if (doc.y > doc.page.height - 180) doc.addPage();
+       // Seitenumbruch wenn zu wenig Platz (ca. 300pt für kompletten Tag)
+       if (doc.y > doc.page.height - 330) addPageWithFooter();
 
       // Datumsbalken
       const headerY = doc.y;
@@ -273,16 +291,17 @@ function generatePDF(outputPath, days, startDate, endDate) {
            .text('Mahlzeiten', 50, doc.y + 4);
         doc.y += 6;
 
-        // Tabellenkopf
-        const col = { name: 50, kh: 200, p: 290, og: 370, cal: 440 };
+         // Tabellenkopf
+        const col = { name: 50, time: 165, kh: 235, p: 305, og: 375, cal: 440 };
         const rowY = doc.y;
         doc.rect(50, rowY, pageWidth, 16).fill(COL_LIGHT);
         doc.fillColor(COL_GREY).fontSize(8).font('Helvetica-Bold');
-        doc.text('Mahlzeit / Gericht',    col.name + 4, rowY + 4, { width: 145 });
-        doc.text('KH (g)', col.kh,  rowY + 4, { width: 85, align: 'right' });
-        doc.text('Prot (g)',        col.p,   rowY + 4, { width: 75, align: 'right' });
-        doc.text('Obst/Gem (g)',   col.og,  rowY + 4, { width: 65, align: 'right' });
-        doc.text('kcal',   col.cal,  rowY + 4, { width: 70, align: 'right' });
+        doc.text('Mahlzeit / Gericht',    col.name + 4, rowY + 4, { width: 110 });
+        doc.text('Uhrzeit', col.time,      rowY + 4, { width: 55, align: 'center' });
+        doc.text('KH (g)',  col.kh,       rowY + 4, { width: 60, align: 'right' });
+        doc.text('Prot (g)', col.p,       rowY + 4, { width: 60, align: 'right' });
+        doc.text('Obst/Gem (g)', col.og,  rowY + 4, { width: 55, align: 'right' });
+        doc.text('kcal',   col.cal,       rowY + 4, { width: 55, align: 'right' });
         doc.y = rowY + 18;
 
         let totalCarbs = 0, totalProtein = 0, totalFv = 0, totalCal = 0;
@@ -295,12 +314,13 @@ function generatePDF(outputPath, days, startDate, endDate) {
 
           const mY = doc.y;
           doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
-             .text(MEAL_NAMES[meal.meal_type] || '', col.name + 4, mY, { width: 180 });
+             .text(MEAL_NAMES[meal.meal_type] || '', col.name + 4, mY, { width: 110 });
           doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica')
-             .text(String(meal.carbs),         col.kh, mY, { width: 85,  align: 'right' })
-             .text(String(meal.protein),        col.p,  mY, { width: 75,  align: 'right' })
-             .text(String(meal.fruit_veggies),  col.og, mY, { width: 65, align: 'right' })
-             .text(String(meal.calories || 0),  col.cal, mY, { width: 70, align: 'right' });
+             .text(meal.time || '', col.time,   mY, { width: 55, align: 'center' })
+             .text(String(meal.carbs),         col.kh,  mY, { width: 60, align: 'right' })
+             .text(String(meal.protein),       col.p,   mY, { width: 60, align: 'right' })
+             .text(String(meal.fruit_veggies), col.og,  mY, { width: 55, align: 'right' })
+             .text(String(meal.calories || 0), col.cal, mY, { width: 55, align: 'right' });
           doc.y = mY + 13;
 
           if (meal.name && meal.name.trim()) {
@@ -329,7 +349,7 @@ function generatePDF(outputPath, days, startDate, endDate) {
 
       // ── Trainings ───────────────────────────────────────────────────────
       if (day.workouts.length > 0) {
-        if (doc.y > doc.page.height - 100) doc.addPage();
+        if (doc.y > doc.page.height - 140) addPageWithFooter();
 
         doc.fillColor('#2196f3').fontSize(10).font('Helvetica-Bold')
            .text('Training', 50, doc.y + 4);
@@ -370,17 +390,8 @@ function generatePDF(outputPath, days, startDate, endDate) {
       doc.y += 10;
     }
 
-    // ── Fusszeile ─────────────────────────────────────────────────────────
-    const range = doc.bufferedPageRange();
-    for (let i = 0; i < range.count; i++) {
-      doc.switchToPage(range.start + i);
-      doc.fillColor(COL_GREY).fontSize(8).font('Helvetica')
-         .text(
-           `Seite ${i + 1} von ${range.count}   |   Erstellt am ${new Date().toLocaleDateString('de-DE')}   |   VitaTrack`,
-           50, doc.page.height - 30,
-           { width: doc.page.width - 100, align: 'center' }
-         );
-    }
+    // ── Fusszeile auf letzter Seite ──────────────────────────────────────
+    writeFooter();
 
     doc.end();
     stream.on('finish', () => resolve(outputPath));

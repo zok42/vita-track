@@ -7,8 +7,14 @@ const mealTypes = [
   { value: 'snack', label: '🍎 Zwischenmahlzeit' },
 ];
 
+function nowHHMM() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
 export default function MealForm({ date, onSaved, mealToEdit = null, onCancel }) {
   const [mealType, setMealType] = useState('breakfast');
+  const [mealTime, setMealTime] = useState(nowHHMM());
   const [name, setName] = useState('');
   const [carbs, setCarbs] = useState('');
   const [protein, setProtein] = useState('');
@@ -18,6 +24,7 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
   useEffect(() => {
     if (mealToEdit) {
       setMealType(mealToEdit.meal_type);
+      setMealTime(mealToEdit.time || nowHHMM());
       setName(mealToEdit.name ?? '');
       setCarbs(String(mealToEdit.carbs));
       setProtein(String(mealToEdit.protein));
@@ -25,6 +32,7 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
       setCalories(String(mealToEdit.calories ?? ''));
     } else {
       setMealType('breakfast');
+      setMealTime(nowHHMM());
       setName('');
       setCarbs('');
       setProtein('');
@@ -39,26 +47,33 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
 
     const calVal = calories ? parseFloat(calories) : 0;
 
-    if (mealToEdit) {
-      await window.api.updateMeal(
-        mealToEdit.id,
-        mealType,
-        name,
-        parseFloat(carbs) || 0,
-        parseFloat(protein) || 0,
-        parseFloat(fruitVeggies) || 0,
-        calVal,
-      );
-    } else {
-      await window.api.upsertMeal(
-        date,
-        mealType,
-        name,
-        parseFloat(carbs) || 0,
-        parseFloat(protein) || 0,
-        parseFloat(fruitVeggies) || 0,
-        calVal,
-      );
+    try {
+      if (mealToEdit) {
+        await window.api.updateMeal(
+          mealToEdit.id,
+          mealType,
+          name,
+          parseFloat(carbs) || 0,
+          parseFloat(protein) || 0,
+          parseFloat(fruitVeggies) || 0,
+          calVal,
+          mealTime,
+        );
+      } else {
+        await window.api.upsertMeal(
+          date,
+          mealType,
+          name,
+          parseFloat(carbs) || 0,
+          parseFloat(protein) || 0,
+          parseFloat(fruitVeggies) || 0,
+          calVal,
+          mealTime,
+        );
+      }
+    } catch (err) {
+      alert('Fehler beim Speichern: ' + err.message);
+      return;
     }
 
     setName('');
@@ -66,6 +81,7 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
     setProtein('');
     setFruitVeggies('');
     setCalories('');
+    setMealTime(nowHHMM());
     setMealType('breakfast');
     onSaved();
   }
@@ -84,6 +100,10 @@ export default function MealForm({ date, onSaved, mealToEdit = null, onCancel })
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
+        </label>
+        <label style={{ flex: 1 }}>
+          Uhrzeit
+          <input type="time" value={mealTime} onChange={(e) => setMealTime(e.target.value)} />
         </label>
         <label style={{ flex: 1 }}>
           Kalorien (kcal)
