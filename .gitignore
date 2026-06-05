@@ -3,4 +3,5 @@ dist/
 release/
 *.db
 .DS_Store
-*.pdf
+VitaTrack_Bericht_*.pdf
+VitaTrack_Export_*.json
