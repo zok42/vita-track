@@ -21,8 +21,7 @@ No tests, no linter, no typechecker configured.
 
 ## Database quirks
 - `upsertMeal(date, mealType, ...)` inserts or updates based on `(date, meal_type)` uniqueness (no standalone `addMeal`)
-- Schema CHECK constraint on `workouts.type` only allows: `'walking'`, `'cycling'`, `'swimming'`
-  - **UI offers 6 types** (`workout`, `tai chi`, `paddling` also). Saving the extra types **will fail** with SQLite constraint violation. To fix, either widen the CHECK constraint or drop it and handle at the app layer.
+- Schema CHECK constraint on `workouts.type` allows: `'walking'`, `'cycling'`, `'swimming'`, `'workout'`, `'tai chi'`, `'paddling'`, `'other'` (widen via migration)
 - Legacy migration: `meal_number` column → `meal_type` (runs silently at startup)
 
 ## Style

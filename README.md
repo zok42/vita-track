@@ -252,7 +252,7 @@ erDiagram
     workouts {
         int id PK
         string date FK
-        string type "walking | cycling | swimming"
+        string type "walking | cycling | swimming | workout | tai chi | paddling | other"
         int duration
         string intensity "light | medium | high"
         float calories
@@ -280,7 +280,7 @@ CREATE TABLE meals (
 CREATE TABLE workouts (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   date           TEXT NOT NULL,            -- YYYY-MM-DD
-  type           TEXT NOT NULL CHECK(type IN ('walking','cycling','swimming')),
+  type           TEXT NOT NULL CHECK(type IN ('walking','cycling','swimming','workout','tai chi','paddling','other')),
   duration       INTEGER NOT NULL,
   intensity      TEXT NOT NULL CHECK(intensity IN ('light','medium','high')),
   calories       REAL NOT NULL DEFAULT 0,

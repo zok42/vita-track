@@ -4,7 +4,7 @@ import 'react-calendar/dist/Calendar.css';
 
 const mealNames = ['Frühstück', 'Mittagessen', 'Abendessen'];
 const intensityLabels = { light: 'locker', medium: 'mittel', high: 'hoch' };
-const typeLabels = { walking: 'Spazieren', cycling: 'Radfahren', swimming: 'Schwimmen' };
+const typeLabels = { walking: 'Spazieren', cycling: 'Radfahren', swimming: 'Schwimmen', workout: 'Workout', 'tai chi': 'Tai Chi', paddling: 'Paddeln', other: 'Andere' };
 
 export default function Dashboard({ onDateSelect }) {
   const [viewMode, setViewMode] = useState('month');

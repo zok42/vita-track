@@ -4,7 +4,8 @@ const typeLabels = {
   swimming: '🏊 Schwimmen',
   workout: '💪 Workout',
   'tai chi': '🧘 Tai Chi',
-  paddling: '🛶 Paddeln'
+  paddling: '🛶 Paddeln',
+  other: '❓ Andere'
 };
 const intensityLabels = { light: '🟢 Locker', medium: '🟡 Mittel', high: '🔴 Hoch' };
 

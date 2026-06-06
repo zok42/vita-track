@@ -7,6 +7,7 @@ const workoutTypes = [
   { value: 'workout', label: '💪 Workout' },
   { value: 'tai chi', label: '🧘 Tai Chi' },
   { value: 'paddling', label: '🛶 Paddeln' },
+  { value: 'other', label: '❓ Andere' },
 ];
 
 const intensities = [

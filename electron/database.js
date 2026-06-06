@@ -22,16 +22,16 @@ export function initDatabase() {
        created_at TEXT DEFAULT (datetime('now'))
      );
 
-     CREATE TABLE IF NOT EXISTS workouts (
-       id INTEGER PRIMARY KEY AUTOINCREMENT,
-       date TEXT NOT NULL,
-       type TEXT NOT NULL CHECK(type IN ('walking','cycling','swimming')),
-       duration INTEGER NOT NULL,
-       intensity TEXT NOT NULL CHECK(intensity IN ('light','medium','high')),
-       calories REAL NOT NULL DEFAULT 0,
-       avg_heart_rate INTEGER NOT NULL DEFAULT 0,
-       created_at TEXT DEFAULT (datetime('now'))
-     );
+      CREATE TABLE IF NOT EXISTS workouts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('walking','cycling','swimming','workout','tai chi','paddling','other')),
+        duration INTEGER NOT NULL,
+        intensity TEXT NOT NULL CHECK(intensity IN ('light','medium','high')),
+        calories REAL NOT NULL DEFAULT 0,
+        avg_heart_rate INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
 
      CREATE INDEX IF NOT EXISTS idx_meals_date ON meals(date);
      CREATE INDEX IF NOT EXISTS idx_workouts_date ON workouts(date);
@@ -70,6 +70,34 @@ export function initDatabase() {
    try {
       db.exec(`ALTER TABLE meals ADD COLUMN time TEXT NOT NULL DEFAULT ''`);
     } catch {}
+
+   // Migration: widen workouts.type CHECK constraint (add 'workout','tai chi','paddling','other')
+   try {
+     const info = db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='workouts'`).get();
+     if (info && info.sql && !info.sql.includes('tai chi')) {
+       db.exec(`DROP TABLE IF EXISTS workouts_old`);
+       db.exec(`ALTER TABLE workouts RENAME TO workouts_old`);
+       db.exec(`
+         CREATE TABLE workouts (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           date TEXT NOT NULL,
+           type TEXT NOT NULL CHECK(type IN ('walking','cycling','swimming','workout','tai chi','paddling','other')),
+           duration INTEGER NOT NULL,
+           intensity TEXT NOT NULL CHECK(intensity IN ('light','medium','high')),
+           calories REAL NOT NULL DEFAULT 0,
+           avg_heart_rate INTEGER NOT NULL DEFAULT 0,
+           created_at TEXT DEFAULT (datetime('now'))
+         )
+       `);
+       db.exec(`
+         INSERT INTO workouts (id, date, type, duration, intensity, calories, avg_heart_rate, created_at)
+         SELECT id, date, type, duration, intensity, calories, avg_heart_rate, created_at FROM workouts_old
+       `);
+       db.exec(`DROP TABLE workouts_old`);
+     }
+   } catch {
+     try { db.exec(`DROP TABLE IF EXISTS workouts_old`); } catch {}
+   }
 
   return db;
 }
@@ -116,7 +144,10 @@ export function getWorkoutsRange(startDate, endDate) {
   return db.prepare('SELECT * FROM workouts WHERE date >= ? AND date <= ? ORDER BY date, created_at').all(startDate, endDate);
 }
 
+const VALID_WORKOUT_TYPES = ['walking','cycling','swimming','workout','tai chi','paddling','other'];
+
 export function addWorkout(date, type, duration, intensity, calories = 0, avgHeartRate = 0) {
+  if (!VALID_WORKOUT_TYPES.includes(type)) throw new Error(`Invalid workout type: ${type}`);
   const result = db.prepare('INSERT INTO workouts (date, type, duration, intensity, calories, avg_heart_rate) VALUES (?, ?, ?, ?, ?, ?)')
     .run(date, type, duration, intensity, calories, avgHeartRate);
   return { id: result.lastInsertRowid, date, type, duration, intensity, calories, avgHeartRate };
@@ -127,6 +158,7 @@ export function deleteWorkout(id) {
 }
 
 export function updateWorkout(id, type, duration, intensity, calories, avgHeartRate) {
+  if (!VALID_WORKOUT_TYPES.includes(type)) throw new Error(`Invalid workout type: ${type}`);
   db.prepare(`
     UPDATE workouts 
     SET type = ?, duration = ?, intensity = ?, calories = ?, avg_heart_rate = ?

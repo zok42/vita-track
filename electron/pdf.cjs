@@ -2,7 +2,7 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 
 const MEAL_NAMES   = { breakfast: 'Frühstück', lunch: 'Mittagessen', dinner: 'Abendessen', snack: 'Zwischenmahlzeit' };
-const TYPE_LABELS  = { walking: 'Spazieren', cycling: 'Radfahren', swimming: 'Schwimmen', workout: 'Workout', 'tai chi': 'Tai Chi', paddling: 'Paddeln' };
+const TYPE_LABELS  = { walking: 'Spazieren', cycling: 'Radfahren', swimming: 'Schwimmen', workout: 'Workout', 'tai chi': 'Tai Chi', paddling: 'Paddeln', other: 'Andere' };
 const INTENS_LABELS = { light: 'Locker', medium: 'Mittel', high: 'Hoch' };
 
 const COL_PRIMARY  = '#1a1a2e';
@@ -10,7 +10,7 @@ const COL_ACCENT   = '#e94560';
 const COL_LIGHT    = '#f0f2f5';
 const COL_GREY     = '#666666';
 
-const TYPE_KEYS   = ['walking', 'cycling', 'swimming'];
+const TYPE_KEYS   = ['walking', 'cycling', 'swimming', 'workout', 'tai chi', 'paddling', 'other'];
 const INTENS_KEYS = ['light', 'medium', 'high'];
 
 function formatDate(dateStr) {
@@ -105,7 +105,7 @@ function generatePDF(outputPath, days, startDate, endDate) {
          const sundayStr = sunday.toISOString().slice(0, 10);
          const weekLabel = `KW ${getISOWeekNumber(monday)} (${formatDateShort(monday)} – ${formatDateShort(sundayStr)})`;
 
-        if (doc.y > doc.page.height - 160) addPageWithFooter();
+        if (doc.y > doc.page.height - 220) addPageWithFooter();
 
          doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
             .text(weekLabel, 50, doc.y + 4);
@@ -138,36 +138,40 @@ function generatePDF(outputPath, days, startDate, endDate) {
             .text('Gesamt',      col.total,      thY + 4, { width: 90, align: 'right' });
          doc.y = thY + 18;
 
-         // Tabellenzeilen
-         let weekTotalCount = 0, weekTotalDur = 0;
-         for (const type of TYPE_KEYS) {
-           let totalCount = 0, totalDur = 0;
-           const rY = doc.y;
-           doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica')
-              .text(TYPE_LABELS[type], col.type + 4, rY, { width: 115 });
+          // Tabellenzeilen (nur Typen mit Einträgen)
+          let weekTotalCount = 0, weekTotalDur = 0;
+          for (const type of TYPE_KEYS) {
+            let totalCount = 0, totalDur = 0;
+            for (const intens of INTENS_KEYS) {
+              totalCount += matrix[type][intens].count;
+              totalDur   += matrix[type][intens].duration;
+            }
+            if (totalCount === 0) continue;
 
-           for (const intens of INTENS_KEYS) {
-             const cell = matrix[type][intens];
-             const cellCol = intens === 'light' ? col.light : intens === 'medium' ? col.medium : col.high;
-             const cellW   = intens === 'high' ? 80 : 95;
-             const align   = intens === 'high' ? 'right' : 'center';
-             const text    = cell.count > 0 ? `${cell.count}x ${cell.duration}min` : '-';
-             totalCount += cell.count;
-             totalDur   += cell.duration;
-             doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica')
-                .text(text, cellCol, rY, { width: cellW, align });
-           }
+            const rY = doc.y;
+            weekTotalCount += totalCount;
+            weekTotalDur   += totalDur;
+            doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica')
+               .text(TYPE_LABELS[type], col.type + 4, rY, { width: 115 });
 
-           weekTotalCount += totalCount;
-           weekTotalDur   += totalDur;
-           doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
-              .text(`${totalCount}x ${totalDur}min`, col.total, rY, { width: 90, align: 'right' });
+            for (const intens of INTENS_KEYS) {
+              const cell = matrix[type][intens];
+              const cellCol = intens === 'light' ? col.light : intens === 'medium' ? col.medium : col.high;
+              const cellW   = intens === 'high' ? 80 : 95;
+              const align   = intens === 'high' ? 'right' : 'center';
+              const text    = cell.count > 0 ? `${cell.count}x ${cell.duration}min` : '-';
+              doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica')
+                 .text(text, cellCol, rY, { width: cellW, align });
+            }
 
-           doc.y = rY + 13;
-           doc.moveTo(50, doc.y).lineTo(50 + pw, doc.y)
-              .strokeColor('#e0e0e0').lineWidth(0.5).stroke();
-           doc.y += 3;
-         }
+            doc.fillColor(COL_PRIMARY).fontSize(9).font('Helvetica-Bold')
+               .text(`${totalCount}x ${totalDur}min`, col.total, rY, { width: 90, align: 'right' });
+
+            doc.y = rY + 13;
+            doc.moveTo(50, doc.y).lineTo(50 + pw, doc.y)
+               .strokeColor('#e0e0e0').lineWidth(0.5).stroke();
+            doc.y += 3;
+          }
 
          // Wochen-Summenzeile
          const wtY = doc.y;
@@ -209,18 +213,18 @@ function generatePDF(outputPath, days, startDate, endDate) {
        } : { carbs: 0, protein: 0, fruit_veggies: 0, calories: 0 };
 
        // Prepare data for workout duration per type
-       const workoutTotals = { walking: 0, cycling: 0, swimming: 0 };
-       for (const day of days) {
-         for (const w of day.workouts) {
-           if (workoutTotals[w.type] !== undefined) {
-             workoutTotals[w.type] += w.duration;
-           }
-         }
-       }
+        const workoutTotals = { walking: 0, cycling: 0, swimming: 0, workout: 0, 'tai chi': 0, paddling: 0, other: 0 };
+        for (const day of days) {
+          for (const w of day.workouts) {
+            if (workoutTotals[w.type] !== undefined) {
+              workoutTotals[w.type] += w.duration;
+            }
+          }
+        }
 
-       // Draw two bar charts side by side
-       const chartWidth = (doc.page.width - 100) / 2 - 20; // each chart width with gap
-       const chartHeight = 120;
+        // Draw two bar charts side by side
+        const chartWidth = (doc.page.width - 100) / 2 - 20; // each chart width with gap
+        const chartHeight = 200;
        const leftX = 50;
        const rightX = 50 + chartWidth + 20;
        const chartY = doc.y;
@@ -252,12 +256,16 @@ function generatePDF(outputPath, days, startDate, endDate) {
           .text('Trainingsdauer nach Art', rightX, chartY);
        doc.y += 20;
 
-       const workoutData = [
-         { label: 'Spazieren', value: workoutTotals.walking,   color: '#8bc34a' },
-         { label: 'Radfahren', value: workoutTotals.cycling,   color: '#03a9f4' },
-         { label: 'Schwimmen', value: workoutTotals.swimming,  color: '#9c27b0' }
-       ];
-       const workoutMax = Math.max(...workoutData.map(d => d.value)) || 1;
+        const workoutData = [
+          { label: 'Spazieren', value: workoutTotals.walking,   color: '#8bc34a' },
+          { label: 'Radfahren', value: workoutTotals.cycling,   color: '#03a9f4' },
+          { label: 'Schwimmen', value: workoutTotals.swimming,  color: '#9c27b0' },
+          { label: 'Workout',   value: workoutTotals.workout,   color: '#ff5722' },
+          { label: 'Tai Chi',   value: workoutTotals['tai chi'],color: '#00bcd4' },
+          { label: 'Paddeln',   value: workoutTotals.paddling,  color: '#ff9800' },
+          { label: 'Andere',    value: workoutTotals.other,     color: '#607d8b' }
+        ].filter(d => d.value > 0);
+        const workoutMax = Math.max(...workoutData.map(d => d.value)) || 1;
        workoutData.forEach((item, index) => {
          const barY = chartY + 20 + index * 25;
          const barWidth = (item.value / workoutMax) * (chartWidth - 100);
